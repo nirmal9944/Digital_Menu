@@ -1,0 +1,627 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ restaurant.restaurant_name }} {{ restaurant.sub_name }} | Scan. Select. Savor.</title>
+<meta name="description" content="Welcome to {{ restaurant.restaurant_name }}. Choose your language and view today's table menu in seconds.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+:root{
+  --bg:#faf8f5;
+  --card:#ffffff;
+  --text:#2b2420;
+  --muted:#92897e;
+  --orange:#ef6f1f;
+  --orange-light:#ff9a4d;
+  --orange-pale:#fbe6d6;  
+  --orange-deep:#c8550e;  
+  --border:#f0eae1;
+  --green:#2ea84a;
+  --green-bg:#e9f6ec;
+  --green-text:#1f6b34;
+  --shadow-sm:0 2px 12px rgba(43,36,32,0.07);
+  --shadow-md:0 8px 28px rgba(43,36,32,0.10);
+  --shadow-lg:0 20px 48px rgba(43,36,32,0.13);
+  --shadow-btn:0 10px 28px rgba(239,111,31,0.35);
+  --r-sm:12px;
+  --r-md:18px;
+  --r-lg:26px;
+  --r-xl:36px;
+  --r-full:999px;
+  --ease:cubic-bezier(.4,0,.2,1);
+  --f-sans:'Poppins',system-ui,sans-serif;
+  --f-serif:'Playfair Display',Georgia,serif;
+
+  /* ── Dropdown option height: each .lang-opt is min-height 48px + 1px border ──
+     Show exactly 4 options = 4 × 49px = 196px                                  */
+  --opt-h: 49px;
+  --drop-visible: calc(var(--opt-h) * 4);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-size:16px}
+body{
+  font-family:var(--f-sans);
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.6;
+}
+.page-wrap{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:1fr;
+}
+@media(min-width:860px){
+  .page-wrap{
+    grid-template-columns:minmax(320px,480px) 1fr;
+    min-height:100vh;
+  }
+}
+@media(min-width:1200px){
+  .page-wrap{grid-template-columns:460px 1fr}
+}
+
+/* HERO PANEL */
+.hero-panel{
+  position:relative;
+  background:var(--card);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:clamp(40px,8vw,72px) clamp(28px,6vw,56px);
+  text-align:center;
+  overflow:hidden;
+  isolation:isolate;
+  border-bottom:1px solid var(--border);
+}
+@media(min-width:860px){
+  .hero-panel{
+    border-bottom:none;
+    border-right:1px solid var(--border);
+    min-height:100vh;
+    position:sticky;
+    top:0;
+    height:100vh;
+  }
+}
+.blob{
+  position:absolute;border-radius:50%;pointer-events:none;z-index:0;opacity:.35;filter:blur(32px);
+}
+.blob-tl{
+  width:clamp(140px,25vw,220px);height:clamp(140px,25vw,220px);
+  top:-60px;left:-60px;
+  background:radial-gradient(circle,#ffb37a 0%,#ef6f1f 60%,transparent 100%);
+}
+.blob-br{
+  width:clamp(120px,20vw,180px);height:clamp(120px,20vw,180px);
+  bottom:-40px;right:-40px;
+  background:radial-gradient(circle,#c7e9a0 0%,#2ea84a 60%,transparent 100%);
+}
+.deco-layer{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.di{position:absolute;color:var(--orange);opacity:.08;font-size:clamp(1rem,2.5vw,1.6rem)}
+.di.a{top:8%;left:14%;transform:rotate(-15deg)}
+.di.b{top:5%;right:18%;transform:rotate(12deg)}
+.di.c{top:40%;left:5%;transform:rotate(6deg)}
+.di.d{top:55%;right:6%;transform:rotate(-8deg)}
+.di.e{bottom:18%;left:20%;transform:rotate(10deg)}
+.di.f{bottom:12%;right:22%;transform:rotate(-5deg)}
+
+/* Logo area */
+.logo-ring{
+  position:relative;z-index:1;
+  width:clamp(76px,14vw,108px);height:clamp(76px,14vw,108px);
+  border-radius:50%;
+  background:var(--orange-pale);
+  border:2px solid rgba(239,111,31,.2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:clamp(1.8rem,4vw,2.6rem);
+  color:var(--orange);
+  margin-bottom:clamp(20px,4vw,28px);
+  overflow:hidden;
+  animation:float 3.6s ease-in-out infinite;
+}
+.logo-ring img{
+  width:100%;height:100%;
+  object-fit:cover;
+  border-radius:50%;
+  display:block;
+}
+.logo-ring .fallback-icon{
+  font-size:clamp(1.8rem,4vw,2.6rem);
+  color:var(--orange);
+}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+
+.brand-name{
+  position:relative;z-index:1;
+  font-family:var(--f-serif);
+  font-size:clamp(2rem,4.5vw,3rem);
+  font-weight:600;color:var(--text);
+  letter-spacing:2px;line-height:1.1;margin-bottom:8px;
+}
+.brand-sub{
+  position:relative;z-index:1;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  font-size:clamp(.68rem,1.4vw,.8rem);font-weight:600;
+  letter-spacing:3px;text-transform:uppercase;
+  color:var(--orange);margin-bottom:clamp(20px,4vw,32px);
+}
+.brand-sub::before,.brand-sub::after{
+  content:'';width:22px;height:2px;background:var(--orange);border-radius:2px;
+}
+.welcome-heading{
+  position:relative;z-index:1;
+  font-size:clamp(1.15rem,2.5vw,1.55rem);font-weight:700;
+  margin-bottom:8px;color:var(--text);
+}
+.welcome-text{
+  position:relative;z-index:1;
+  font-size:clamp(.82rem,1.6vw,.95rem);
+  color:var(--muted);max-width:280px;margin:0 auto;
+}
+
+/* CONTENT PANEL */
+.content-panel{
+  background:var(--bg);
+  padding:clamp(28px,5vw,56px) clamp(20px,4vw,48px);
+  display:flex;flex-direction:column;
+  gap:clamp(14px,2.5vw,20px);
+  position:relative;
+}
+@media(min-width:860px){
+  .content-panel{
+    min-height:100vh;justify-content:center;
+    max-width:540px;margin:0 auto;width:100%;
+  }
+}
+
+[data-anim]{
+  opacity:0;transform:translateY(22px);
+  transition:opacity .6s var(--ease),transform .6s var(--ease);
+}
+[data-anim].visible{opacity:1;transform:translateY(0)}
+
+/* TABLE CARD */
+.table-card{
+  background:var(--card);border-radius:var(--r-lg);
+  padding:clamp(16px,3vw,22px) clamp(18px,3.5vw,24px);
+  box-shadow:var(--shadow-md);
+  display:flex;align-items:center;gap:16px;
+  border:1px solid var(--border);
+}
+.table-icon-wrap{
+  flex-shrink:0;
+  width:clamp(44px,8vw,52px);height:clamp(44px,8vw,52px);
+  border-radius:var(--r-md);
+  background:var(--orange-pale);color:var(--orange);
+  display:flex;align-items:center;justify-content:center;
+  font-size:clamp(1rem,2.2vw,1.25rem);
+}
+.table-meta{flex:1}
+.table-meta .lbl{
+  font-size:clamp(.68rem,1.3vw,.75rem);color:var(--muted);
+  font-weight:500;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:3px;
+}
+.table-meta .num{
+  font-family:var(--f-serif);
+  font-size:clamp(1.1rem,2.5vw,1.4rem);font-weight:600;color:var(--text);
+}
+.table-badge{
+  flex-shrink:0;background:var(--orange);color:#fff;
+  font-weight:700;font-size:clamp(.9rem,2vw,1.05rem);
+  padding:8px clamp(16px,3vw,22px);border-radius:var(--r-full);letter-spacing:.5px;
+}
+
+/* QR CARD */
+.qr-card{
+  display:flex;align-items:center;gap:14px;
+  background:var(--green-bg);border-radius:var(--r-md);
+  padding:clamp(14px,2.5vw,18px) clamp(16px,3vw,20px);
+  border:1px solid rgba(46,168,74,.15);
+}
+.success-dot{
+  flex-shrink:0;
+  width:clamp(36px,6vw,44px);height:clamp(36px,6vw,44px);
+  border-radius:50%;background:var(--green);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:clamp(.85rem,1.8vw,1rem);
+  animation:pulse-ring 2.5s ease-out infinite;
+}
+@keyframes pulse-ring{
+  0%{box-shadow:0 0 0 0 rgba(46,168,74,.4)}
+  70%{box-shadow:0 0 0 10px rgba(46,168,74,0)}
+  100%{box-shadow:0 0 0 0 rgba(46,168,74,0)}
+}
+.qr-info{flex:1}
+.qr-info .t1{font-size:clamp(.82rem,1.6vw,.92rem);font-weight:600;color:var(--green-text);margin-bottom:2px}
+.qr-info .t2{font-size:clamp(.72rem,1.4vw,.8rem);color:#3f7a52}
+.qr-icon-wrap{flex-shrink:0;font-size:clamp(1.2rem,2.5vw,1.5rem);color:var(--green);opacity:.7}
+
+/* LANGUAGE CARD */
+.lang-card{
+  background:var(--card);border-radius:var(--r-lg);
+  padding:clamp(18px,3.5vw,26px) clamp(18px,3.5vw,24px);
+  box-shadow:var(--shadow-md);border:1px solid var(--border);
+  position:relative;
+  z-index:300;
+}
+.lang-card-header{
+  display:flex;align-items:flex-start;gap:12px;
+  margin-bottom:clamp(14px,2.5vw,20px);
+}
+.lang-icon-badge{
+  flex-shrink:0;width:38px;height:38px;border-radius:50%;
+  background:var(--orange-pale);color:var(--orange);
+  display:flex;align-items:center;justify-content:center;font-size:1rem;
+}
+.lang-card-header h2{font-size:clamp(.92rem,1.8vw,1.05rem);font-weight:600;margin-bottom:2px;color:var(--text)}
+.lang-card-header p{font-size:clamp(.72rem,1.4vw,.8rem);color:var(--muted)}
+
+/* DROPDOWN */
+.dropdown-wrap{position:relative;z-index:400}
+.dropdown-trigger{
+  width:100%;display:flex;align-items:center;gap:12px;
+  background:var(--bg);border:1.5px solid var(--border);
+  border-radius:var(--r-full);
+  padding:clamp(11px,2vw,14px) clamp(16px,3vw,20px);
+  font-family:var(--f-sans);font-size:clamp(.88rem,1.7vw,.95rem);
+  color:var(--text);cursor:pointer;min-height:52px;
+  transition:border-color .25s var(--ease),box-shadow .25s var(--ease);
+  outline:none;text-align:left;
+}
+.dropdown-trigger:hover{border-color:var(--orange-light);box-shadow:var(--shadow-sm)}
+.dropdown-trigger:focus-visible{border-color:var(--orange);box-shadow:0 0 0 3px rgba(239,111,31,.18)}
+.dropdown-trigger.open{
+  border-color:var(--orange);
+  border-radius:var(--r-lg) var(--r-lg) 0 0;
+  box-shadow:var(--shadow-sm);
+}
+.dt-flag{width:24px;height:24px;border-radius:50%;flex-shrink:0;display:inline-block;overflow:hidden}
+.dt-label{flex:1;font-weight:500}
+.dt-chevron{color:var(--muted);font-size:.78rem;transition:transform .3s var(--ease),color .25s}
+.dropdown-trigger.open .dt-chevron{transform:rotate(180deg);color:var(--orange)}
+
+/* ── DROPDOWN LIST ──
+   Show exactly 4 options, 5th revealed by scrolling.
+   Each option is min-height 48px + 1px top-border = ~49px.
+   4 × 49px = 196px.                                        */
+.dropdown-list{
+  position:absolute;
+  left:0;right:0;
+  background:var(--card);
+  border:1.5px solid var(--orange);
+  border-top:none;
+  border-radius:0 0 var(--r-lg) var(--r-lg);
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  /* collapsed state */
+  max-height:0;
+  opacity:0;
+  transition:max-height .35s var(--ease), opacity .25s var(--ease);
+  z-index:9999;
+  box-shadow:0 16px 40px rgba(43,36,32,0.15);
+}
+
+/* ── open: cap at exactly 4 option heights ── */
+.dropdown-list.open{
+  max-height: var(--drop-visible);   /* 4 × 49px = 196px */
+  opacity:1;
+}
+
+/* Thin scrollbar hint so users know it's scrollable */
+.dropdown-list::-webkit-scrollbar{width:4px}
+.dropdown-list::-webkit-scrollbar-track{background:transparent}
+.dropdown-list::-webkit-scrollbar-thumb{
+  background:rgba(239,111,31,.35);
+  border-radius:4px;
+}
+
+.lang-opt{
+  width:100%;
+  display:flex;align-items:center;gap:12px;
+  padding:clamp(11px,2vw,13px) clamp(16px,3vw,20px);
+  border:none;background:transparent;
+  font-family:var(--f-sans);font-size:clamp(.85rem,1.6vw,.93rem);
+  color:var(--text);cursor:pointer;text-align:left;
+  transition:background .15s var(--ease);
+  min-height:48px;
+  /* prevent options from shrinking — keeps height predictable */
+  flex-shrink:0;
+}
+.lang-opt:hover{background:var(--orange-pale)}
+.lang-opt.sel{background:var(--orange-pale);font-weight:600;color:var(--orange-deep)}
+.lang-opt+.lang-opt{border-top:1px solid var(--border)}
+.lang-opt .flag-circle{width:24px;height:24px;border-radius:50%;flex-shrink:0;display:inline-block;overflow:hidden}
+.lang-opt .name{flex:1}
+.lang-opt .check{color:var(--orange);font-size:.8rem;opacity:0;transition:opacity .2s}
+.lang-opt.sel .check{opacity:1}
+
+/* Flag CSS */
+.f-en{background:linear-gradient(135deg,#3c3b6e 0 40%,#b22234 40%)}
+.f-ne{background:linear-gradient(135deg,#dc143c,#003893 75%)}
+.f-hi{background:linear-gradient(to bottom,#ff9933 0 33%,#fff 33% 66%,#138808 66%)}
+.f-zh{background:#de2910}
+.f-es{background:linear-gradient(to bottom,#aa151b 0 25%,#f1bf00 25% 75%,#aa151b 75%)}
+
+.dt-flag::before,
+.flag-circle::before {
+  font-style:normal;line-height:1;color:white;
+}
+.f-en::before{content:"🇬🇧"}
+.f-ne::before{content:"🇳🇵"}
+.f-hi::before{content:"🇮🇳"}
+.f-zh::before{content:"🇨🇳"}
+.f-es::before{content:"🇪🇸"}
+
+/* VIEW MENU BUTTON */
+.menu-btn-wrap{position:relative;z-index:1}
+.menu-btn{
+  width:100%;
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(135deg,var(--orange-light),var(--orange) 60%,var(--orange-deep));
+  color:#fff;border:none;border-radius:var(--r-full);
+  padding:clamp(15px,2.8vw,19px) clamp(22px,4vw,28px);
+  font-family:var(--f-sans);font-size:clamp(.95rem,1.8vw,1.05rem);font-weight:600;
+  cursor:pointer;box-shadow:var(--shadow-btn);
+  transition:transform .25s var(--ease),box-shadow .25s var(--ease),opacity .2s;
+  min-height:56px;outline:none;letter-spacing:.3px;
+  text-decoration:none;
+}
+.menu-btn:hover{transform:translateY(-2px) scale(1.012);box-shadow:0 18px 40px rgba(239,111,31,.42)}
+.menu-btn:active{transform:scale(.97)}
+.menu-btn:focus-visible{outline:2px solid var(--orange);outline-offset:3px}
+.menu-btn.loading{opacity:.85;cursor:default;pointer-events:none}
+.mb-left{display:flex;align-items:center;gap:10px}
+.mb-icon{font-size:clamp(.9rem,1.8vw,1rem);opacity:.85}
+.mb-arr{font-size:.8rem;transition:transform .25s var(--ease)}
+.menu-btn:hover .mb-arr{transform:translateX(4px)}
+
+/* FOOTER */
+.footer{text-align:center;padding-top:4px;padding-bottom:8px}
+.divider-line{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px}
+.divider-line span{height:1px;width:clamp(40px,8vw,64px);background:var(--border)}
+.divider-line i{color:var(--orange);font-size:.85rem}
+.tagline{font-style:italic;font-size:clamp(.82rem,1.6vw,.95rem);color:var(--muted);margin-bottom:8px}
+.heart{color:var(--orange)}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- ═══════════════════════════════════════
+       HERO PANEL — Brand identity
+  ════════════════════════════════════════ -->
+  <header class="hero-panel" aria-label="{{ restaurant.restaurant_name }} branding">
+    <div class="blob blob-tl" aria-hidden="true"></div>
+    <div class="blob blob-br" aria-hidden="true"></div>
+    <div class="deco-layer" aria-hidden="true">
+      <i class="fa-solid fa-carrot di a"></i>
+      <i class="fa-solid fa-pepper-hot di b"></i>
+      <i class="fa-solid fa-leaf di c"></i>
+      <i class="fa-solid fa-lemon di d"></i>
+      <i class="fa-solid fa-seedling di e"></i>
+      <i class="fa-solid fa-wheat-awn di f"></i>
+    </div>
+
+    <div class="logo-ring" aria-label="{{ restaurant.restaurant_name }} logo">
+      {% if restaurant.logo %}
+        <img
+          src="{{ restaurant.logo.url }}"
+          alt="{{ restaurant.restaurant_name }} logo"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+        >
+        <i class="fa-solid fa-utensils fallback-icon" style="display:none" aria-hidden="true"></i>
+      {% else %}
+        <i class="fa-solid fa-utensils fallback-icon" aria-hidden="true"></i>
+      {% endif %}
+    </div>
+
+    <h1 class="brand-name">{{ restaurant.restaurant_name }}</h1>
+    <p class="brand-sub">{{ restaurant.sub_name }}</p>
+    <h2 class="welcome-heading">Welcome!</h2>
+    <p class="welcome-text">Delicious moments, now in your language.</p>
+  </header>
+
+  <!-- ═══════════════════════════════════════
+       CONTENT PANEL — Table info + actions
+  ════════════════════════════════════════ -->
+  <main class="content-panel" aria-label="Table info and language selection">
+
+    <!-- Table Card -->
+    <div class="table-card" data-anim aria-label="Your table assignment">
+      <div class="table-icon-wrap" aria-hidden="true">
+        <i class="fa-solid fa-chair"></i>
+      </div>
+      <div class="table-meta">
+        <p class="lbl">Your table</p>
+        <p class="num">Table {{ table_number }}</p>
+      </div>
+      <span class="table-badge" aria-label="Table number {{ table_number }}">
+        {{ table_number }}
+      </span>
+    </div>
+
+    <!-- QR Success -->
+    <div class="qr-card" data-anim role="status" aria-live="polite">
+      <div class="success-dot" aria-hidden="true">
+        <i class="fa-solid fa-check"></i>
+      </div>
+      <div class="qr-info">
+        <p class="t1">QR code scanned successfully!</p>
+        {% comment %} <p class="t2">You're all set to explore our menu.</p> {% endcomment %}
+      </div>
+      <div class="qr-icon-wrap" aria-hidden="true">
+        <i class="fa-solid fa-qrcode"></i>
+      </div>
+    </div>
+
+    <!-- Language Card -->
+    <div class="lang-card" data-anim>
+      <div class="lang-card-header">
+        <span class="lang-icon-badge" aria-hidden="true">
+          <i class="fa-solid fa-globe"></i>
+        </span>
+        <div>
+          <h2>Choose Your Language</h2>
+          <p>Select your preferred language to continue</p>
+        </div>
+      </div>
+
+      <div class="dropdown-wrap" id="langDrop">
+        <button
+          class="dropdown-trigger"
+          id="dropBtn"
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded="false"
+          aria-label="Select language, currently English"
+        >
+          <span class="dt-flag f-en" aria-hidden="true"></span>
+          <span class="dt-label" id="dtLabel">English</span>
+          <i class="fa-solid fa-chevron-down dt-chevron" aria-hidden="true"></i>
+        </button>
+
+        <!-- 5 options; max-height shows 4, scroll reveals 5th -->
+        <div class="dropdown-list" id="dropList" role="listbox" aria-label="Available languages">
+          <button class="lang-opt sel" role="option" aria-selected="true"
+            data-lang="en" data-flag="f-en" data-label="English" type="button">
+            <span class="flag-circle f-en" aria-hidden="true"></span>
+            <span class="name">English</span>
+            <i class="fa-solid fa-check check" aria-hidden="true"></i>
+          </button>
+          <button class="lang-opt" role="option" aria-selected="false"
+            data-lang="ne" data-flag="f-ne" data-label="नेपाली (Nepali)" type="button">
+            <span class="flag-circle f-ne" aria-hidden="true"></span>
+            <span class="name">नेपाली (Nepali)</span>
+            <i class="fa-solid fa-check check" aria-hidden="true"></i>
+          </button>
+          <button class="lang-opt" role="option" aria-selected="false"
+            data-lang="hi" data-flag="f-hi" data-label="हिन्दी (Hindi)" type="button">
+            <span class="flag-circle f-hi" aria-hidden="true"></span>
+            <span class="name">हिन्दी (Hindi)</span>
+            <i class="fa-solid fa-check check" aria-hidden="true"></i>
+          </button>
+          <button class="lang-opt" role="option" aria-selected="false"
+            data-lang="zh" data-flag="f-zh" data-label="中文 (Chinese)" type="button">
+            <span class="flag-circle f-zh" aria-hidden="true"></span>
+            <span class="name">中文 (Chinese)</span>
+            <i class="fa-solid fa-check check" aria-hidden="true"></i>
+          </button>
+          <button class="lang-opt" role="option" aria-selected="false"
+            data-lang="es" data-flag="f-es" data-label="Español (Spanish)" type="button">
+            <span class="flag-circle f-es" aria-hidden="true"></span>
+            <span class="name">Español (Spanish)</span>
+            <i class="fa-solid fa-check check" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- View Menu Button -->
+    <div class="menu-btn-wrap" data-anim>
+      <a
+        href="{% url 'menu' table_number %}"
+        class="menu-btn"
+        id="menuBtn"
+        aria-label="View menu for Table {{ table_number }}"
+        role="button"
+      >
+        <span class="mb-left">
+          <i class="fa-solid fa-utensils mb-icon" aria-hidden="true"></i>
+          <span id="btnLabel">View Menu</span>
+        </span>
+        <i class="fa-solid fa-chevron-right mb-arr" aria-hidden="true"></i>
+      </a>
+    </div>
+
+    <footer class="footer" data-anim>
+      <div class="divider-line" aria-hidden="true">
+        <span></span><i class="fa-solid fa-leaf"></i><span></span>
+      </div>
+      <p class="tagline">Good food. Good vibes. Great moments.</p>
+      <i class="fa-solid fa-heart heart" aria-hidden="true"></i>
+    </footer>
+
+  </main>
+</div>
+
+
+<script src="{% static 'js/language.js' %}"></script>
+<script>
+const langManager = new LanguageManager();
+document.addEventListener('DOMContentLoaded', () => {
+
+  // Staggered entrance animations
+  document.querySelectorAll('[data-anim]').forEach((el, i) => {
+    setTimeout(() => el.classList.add('visible'), 180 + i * 140);
+  });
+
+  // ── Language dropdown ──
+  const dropBtn  = document.getElementById('dropBtn');
+  const dropList = document.getElementById('dropList');
+  const dtLabel  = document.getElementById('dtLabel');
+  let open = false;
+
+  function openDrop() {
+    open = true;
+    dropBtn.classList.add('open');
+    dropList.classList.add('open');
+    dropBtn.setAttribute('aria-expanded', 'true');
+  }
+  function closeDrop() {
+    open = false;
+    dropBtn.classList.remove('open');
+    dropList.classList.remove('open');
+    dropBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  dropBtn.addEventListener('click', () => open ? closeDrop() : openDrop());
+
+  document.querySelectorAll('.lang-opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      document.querySelectorAll('.lang-opt').forEach(o => {
+        o.classList.remove('sel');
+        o.setAttribute('aria-selected', 'false');
+      });
+      opt.classList.add('sel');
+      opt.setAttribute('aria-selected', 'true');
+      const flagEl = dropBtn.querySelector('.dt-flag');
+      flagEl.className = `dt-flag ${opt.dataset.flag}`;
+      dtLabel.textContent = opt.dataset.label;
+      dropBtn.setAttribute('aria-label', `Select language, currently ${opt.dataset.label}`);
+      try { localStorage.setItem('flavoria_lang', opt.dataset.lang); } catch(e) {}
+      closeDrop();
+    });
+  });
+
+  document.addEventListener('click', e => {
+    if (!document.getElementById('langDrop').contains(e.target)) closeDrop();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeDrop();
+  });
+
+  // Restore saved language preference
+  try {
+    const saved = localStorage.getItem('flavoria_lang');
+    if (saved) {
+      const match = document.querySelector(`.lang-opt[data-lang="${saved}"]`);
+      if (match) match.click();
+    }
+  } catch(e) {}
+
+});
+</script>
+</body>
+</html>

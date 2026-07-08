@@ -1,0 +1,1654 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ restaurant.restaurant_name }} {{ restaurant.sub_name }} | Menu</title>
+<meta name="description" content="Browse {{ restaurant.restaurant_name }}'s menu. Search dishes, filter by category, and order straight from your table.">
+<meta name="theme-color" content="#faf8f5">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+ /* =========================================================
+   TOKENS
+   ========================================================= */
+:root{
+  /* Color */
+  --color-bg: #faf8f5;
+  --color-bg-deep: #f1ede7;
+  --color-card: #ffffff;
+  --color-text: #2b2420;
+  --color-espresso: #2a1d14;
+  --color-muted: #92897e;
+  --color-orange: #ef6f1f;
+  --color-orange-light: #ff9a4d;
+  --color-orange-pale: #fbe6d6;
+  --color-border: #f0eae1;
+  --color-green: #2ea84a;
+  --color-green-bg: #e9f6ec;
+
+  /* Type families */
+  --font-display: 'Fraunces', serif;
+  --font-body: 'Poppins', sans-serif;
+
+  /* Fluid type scale */
+  --text-xs:   clamp(0.7rem, 0.6rem + 0.3vw, 0.8rem);
+  --text-sm:   clamp(0.8rem, 0.72rem + 0.3vw, 0.92rem);
+  --text-base: clamp(0.9rem, 0.82rem + 0.35vw, 1.05rem);
+  --text-lg:   clamp(1.05rem, 0.92rem + 0.55vw, 1.3rem);
+  --text-xl:   clamp(1.25rem, 1.05rem + 0.85vw, 1.7rem);
+  --text-2xl:  clamp(1.5rem, 1.15rem + 1.6vw, 2.3rem);
+  --text-3xl:  clamp(1.9rem, 1.3rem + 2.6vw, 3.2rem);
+
+  /* Fluid spacing */
+  --space-xs: clamp(0.25rem, 0.2rem + 0.2vw, 0.5rem);
+  --space-sm: clamp(0.5rem, 0.4rem + 0.4vw, 0.9rem);
+  --space-md: clamp(1rem, 0.8rem + 0.8vw, 1.6rem);
+  --space-lg: clamp(1.5rem, 1.1rem + 1.6vw, 2.75rem);
+  --space-xl: clamp(2.25rem, 1.5rem + 3vw, 4.5rem);
+
+  /* Layout */
+  --grid-gap: clamp(0.9rem, 0.7rem + 1vw, 1.75rem);
+  --max-width: 1440px;
+  --container-padding: clamp(1rem, 0.6rem + 2vw, 2.75rem);
+  --header-h: clamp(64px, 56px + 4vw, 84px);
+  --radius-lg: 22px;
+  --radius-md: 16px;
+  --radius-sm: 10px;
+  --radius-full: 999px;
+
+  /* Motion */
+  --ease: cubic-bezier(.4,0,.2,1);
+  --shadow-sm: 0 2px 10px rgba(43,36,32,0.06);
+  --shadow-md: 0 8px 22px rgba(43,36,32,0.08);
+  --shadow-lg: 0 18px 38px rgba(43,36,32,0.14);
+  --shadow-btn: 0 10px 22px rgba(239,111,31,0.3);
+}
+
+/* =========================================================
+   RESET / BASE
+   ========================================================= */
+*{ box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+html,body{ margin:0; padding:0; }
+body{
+  font-family:var(--font-body);
+  background:var(--color-bg-deep);
+  color:var(--color-text);
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+}
+img{ max-width:100%; display:block; }
+button{ font-family:inherit; }
+ul{ margin:0; padding:0; list-style:none; }
+
+.skip-link{
+  position:absolute;
+  left:-9999px;
+  top:0;
+  background:var(--color-orange);
+  color:#fff;
+  padding:10px 18px;
+  border-radius:0 0 10px 0;
+  font-size:.85rem;
+  font-weight:600;
+  z-index:200;
+}
+.skip-link:focus{ left:0; }
+
+:focus-visible{
+  outline:3px solid var(--color-orange);
+  outline-offset:2px;
+  border-radius:6px;
+}
+
+.container{
+  width:min(100% - var(--container-padding) * 2, var(--max-width));
+  margin-inline:auto;
+}
+
+.visually-hidden{
+  position:absolute;
+  width:1px; height:1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+}
+
+/* =========================================================
+   AMBIENT BACKDROP (desktop signature detail)
+   ========================================================= */
+.ambient-glow{
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  opacity:0;
+  background:
+    radial-gradient(38vw 38vw at 8% -6%, rgba(239,111,31,0.10), transparent 60%),
+    radial-gradient(32vw 32vw at 100% 18%, rgba(46,168,74,0.07), transparent 60%);
+}
+
+/* =========================================================
+   APP SHELL (page-level, no fixed max-width)
+   ========================================================= */
+.app{
+  position:relative;
+  min-height:100vh;
+  background:var(--color-bg);
+  display:flex;
+  flex-direction:column;
+}
+
+/* =========================================================
+   STICKY TOP SHELL WITH AUTO-HIDE HEADER
+   ========================================================= */
+.top-shell{
+  position:sticky;
+  top:0;
+  z-index:100;
+  background:rgba(250,248,245,0.94);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border-bottom:1px solid transparent;
+  transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease), border-color 0.3s var(--ease);
+  overflow:visible;
+  transform:translateY(0);
+}
+
+.top-shell.hide-header {
+  transform:translateY(-100%);
+}
+
+.top-shell.scrolled{
+  box-shadow:var(--shadow-md);
+  border-color:var(--color-border);
+}
+
+/* Make sure search and category stay visible */
+.top-shell .search-section,
+.top-shell .category-section {
+  transform:translateY(0);
+}
+
+/* ---------- HEADER - Line 1 ---------- */
+.site-header{ 
+  position:relative; 
+  overflow:visible;
+  transition: opacity 0.3s var(--ease);
+}
+
+.decor-wheat{
+  position:absolute;
+  top:2px;
+  right:4%;
+  font-size:clamp(1.8rem, 1.4rem + 2vw, 3.2rem);
+  color:var(--color-orange);
+  opacity:.10;
+  transform:rotate(18deg);
+  pointer-events:none;
+}
+
+.header-inner{
+  position:relative;
+  z-index:1;
+  display:flex;
+  align-items:center;
+  gap:var(--space-sm);
+  padding:var(--space-sm) 0;
+  animation: fadeSlideIn .6s var(--ease) both;
+}
+
+@keyframes fadeSlideIn{
+  from{ opacity:0; transform:translateY(-8px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+
+.brand-cluster{
+  display:flex;
+  align-items:center;
+  gap:var(--space-sm);
+  flex:1;
+  min-width:0;
+}
+
+.logo-ring{
+  position:relative;
+  flex-shrink:0;
+  width:clamp(48px, 40px + 4vw, 76px);
+  height:clamp(48px, 40px + 4vw, 76px);
+  border-radius:50%;
+  background:#fff;
+  box-shadow:var(--shadow-sm);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:2px solid var(--color-orange-pale);
+  overflow:hidden;
+}
+.logo-ring img{ width:100%; height:100%; object-fit:cover; }
+.logo-ring i{ font-size:1.2rem; color:var(--color-orange); }
+
+.steam-wisp{
+  position:absolute;
+  top:-22px;
+  left:50%;
+  transform:translateX(-50%);
+  width:34px;
+  height:30px;
+  opacity:0;
+  display:none;
+  pointer-events:none;
+}
+.steam-wisp path{
+  stroke:var(--color-orange-light);
+  stroke-width:2;
+  fill:none;
+  stroke-linecap:round;
+  opacity:.55;
+}
+.steam-wisp .w1{ animation: steamRise 4.5s ease-in-out infinite; }
+.steam-wisp .w2{ animation: steamRise 4.5s ease-in-out infinite 1.2s; }
+@keyframes steamRise{
+  0%{ transform:translateY(6px) scaleY(.8); opacity:0; }
+  25%{ opacity:.6; }
+  80%{ opacity:0; }
+  100%{ transform:translateY(-14px) scaleY(1.1); opacity:0; }
+}
+
+.brand-text{ min-width:0; }
+.brand-name{
+  font-family:var(--font-display);
+  font-size:var(--text-xl);
+  font-weight:700;
+  margin:0;
+  line-height:1.1;
+  letter-spacing:-0.01em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.brand-subtitle{
+  color:var(--color-orange);
+  font-weight:600;
+  font-size:var(--text-sm);
+  margin:2px 0 4px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.status-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-size:var(--text-xs);
+  color:var(--color-muted);
+  flex-wrap:wrap;
+}
+.status-dot{
+  width:7px; height:7px;
+  border-radius:50%;
+  background:var(--color-green);
+  box-shadow:0 0 0 3px var(--color-green-bg);
+  flex-shrink:0;
+}
+.status-open{ color:var(--color-green); font-weight:600; }
+.status-sep{ color:var(--color-border); }
+
+.header-actions{
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  overflow:visible;
+  position:relative;
+  z-index:150;
+}
+
+.table-chip{
+  text-align:center;
+  border:1.5px solid var(--color-orange-pale);
+  background:var(--color-orange-pale);
+  border-radius:14px;
+  padding:5px 12px;
+  line-height:1.1;
+  min-width:44px;
+}
+.table-chip .t-label{ font-size:.62rem; color:var(--color-orange); font-weight:600; }
+.table-chip .t-num{ font-size:var(--text-lg); font-weight:800; color:var(--color-orange); }
+
+/* =========================================================
+   FIXED LANGUAGE DROPDOWN
+   ========================================================= */
+.lang-wrap{ 
+  position:relative; 
+  z-index:150;
+}
+
+.lang-btn{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  background:#fff;
+  border:1px solid var(--color-border);
+  border-radius:var(--radius-full);
+  padding:9px 12px;
+  min-height:44px;
+  font-size:var(--text-sm);
+  font-weight:600;
+  color:var(--color-text);
+  cursor:pointer;
+  box-shadow:var(--shadow-sm);
+  transition:border-color .2s var(--ease), transform .15s var(--ease);
+}
+.lang-btn:hover{ transform:translateY(-1px); }
+.lang-btn i{ color:var(--color-orange); font-size:.8rem; }
+.lang-btn .chev{ font-size:.65rem; color:var(--color-muted); transition:transform .2s var(--ease); }
+.lang-wrap.open .lang-btn .chev{ transform:rotate(180deg); }
+.lang-label-text{ display:inline; }
+
+.lang-menu{
+  position:absolute;
+  top:calc(100% + 8px);
+  right:0;
+  background:#fff;
+  border-radius:14px;
+  box-shadow:var(--shadow-lg);
+  padding:6px;
+  min-width:160px;
+  opacity:0;
+  transform:translateY(-8px) scale(.97);
+  pointer-events:none;
+  transition:opacity .18s var(--ease), transform .18s var(--ease);
+  z-index:9999;
+  overflow:visible !important;
+}
+.lang-wrap.open .lang-menu{
+  opacity:1;
+  transform:translateY(0) scale(1);
+  pointer-events:auto;
+}
+.lang-option{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  width:100%;
+  background:none;
+  border:none;
+  text-align:left;
+  padding:10px 10px;
+  border-radius:9px;
+  font-size:var(--text-sm);
+  color:var(--color-text);
+  cursor:pointer;
+  transition:background .15s var(--ease);
+  min-height:40px;
+}
+.lang-option:hover{ background:var(--color-orange-pale); }
+.lang-option.active{ color:var(--color-orange); font-weight:600; }
+
+/* utility actions: cart + orders */
+.utility-nav{
+  display:none;
+  align-items:center;
+  gap:8px;
+}
+.icon-btn{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  width:44px;
+  height:44px;
+  border-radius:var(--radius-full);
+  border:1px solid var(--color-border);
+  background:#fff;
+  color:var(--color-text);
+  font-size:1rem;
+  cursor:pointer;
+  box-shadow:var(--shadow-sm);
+  transition:transform .15s var(--ease), background .2s var(--ease);
+}
+.icon-btn:hover{ transform:translateY(-1px); background:var(--color-orange-pale); }
+.icon-btn .cart-badge{
+  position:absolute;
+  top:-4px;
+  right:-4px;
+  background:var(--color-orange);
+  color:#fff;
+  font-size:.62rem;
+  font-weight:700;
+  min-width:17px;
+  height:17px;
+  border-radius:var(--radius-full);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 4px;
+  transition:transform .2s var(--ease);
+}
+
+/* =========================================================
+   SEARCH BAR - Line 2 (FULL WIDTH)
+   ========================================================= */
+.search-section{
+  padding:var(--space-xs) 0 var(--space-sm);
+  border-top:1px solid var(--color-border);
+  background:rgba(250,248,245,0.4);
+  transition: border-color 0.3s var(--ease);
+}
+
+.search-row{
+  display:flex;
+  gap:10px;
+  width:100%;
+  padding:0;
+}
+.search-box{
+  flex:1;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  background:#fff;
+  border:1px solid var(--color-border);
+  border-radius:var(--radius-full);
+  padding:12px 18px;
+  box-shadow:var(--shadow-sm);
+  transition:box-shadow .2s var(--ease), border-color .2s var(--ease);
+}
+.search-box:focus-within{
+  border-color:var(--color-orange);
+  box-shadow:0 0 0 3px var(--color-orange-pale);
+}
+.search-box i{ color:var(--color-muted); font-size:.95rem; }
+.search-box input{
+  flex:1;
+  border:none;
+  outline:none;
+  background:transparent;
+  font-family:inherit;
+  font-size:var(--text-base);
+  color:var(--color-text);
+  min-width:0;
+}
+.search-box input::placeholder{ color:var(--color-muted); }
+.filter-btn{
+  flex-shrink:0;
+  width:46px;
+  height:46px;
+  border-radius:15px;
+  border:none;
+  background:linear-gradient(135deg,var(--color-orange-light),var(--color-orange));
+  color:#fff;
+  font-size:1rem;
+  cursor:pointer;
+  box-shadow:var(--shadow-btn);
+  position:relative;
+  overflow:hidden;
+  transition:transform .2s var(--ease);
+}
+.filter-btn:hover{ transform:translateY(-1px) scale(1.04); }
+.filter-btn:active{ transform:scale(.95); }
+
+/* =========================================================
+   CATEGORY SELECTOR - Line 3
+   ========================================================= */
+.category-section{
+  position:relative;
+  padding:var(--space-xs) 0;
+  border-top:1px solid var(--color-border);
+  background:rgba(250,248,245,0.3);
+  transition: border-color 0.3s var(--ease);
+}
+
+.category-row{
+  display:flex;
+  gap:var(--space-sm);
+  padding:4px 0;
+  overflow-x:auto;
+  scroll-behavior:smooth;
+  scroll-snap-type:x proximity;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+.category-row::-webkit-scrollbar{ display:none; }
+
+.category-item{
+  flex-shrink:0;
+  scroll-snap-align:start;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  border:none;
+  background:none;
+  cursor:pointer;
+  padding:4px 8px;
+  min-height:44px;
+}
+.category-thumb{
+  width:50px;
+  height:50px;
+  border-radius:14px;
+  background:#fff;
+  border:1.5px solid var(--color-border);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:1.1rem;
+  color:var(--color-muted);
+  overflow:hidden;
+  position:relative;
+  transition:border-color .25s var(--ease), color .25s var(--ease), transform .2s var(--ease);
+}
+.category-thumb img{ width:100%; height:100%; object-fit:cover; }
+.category-thumb:not(.loaded) img{ opacity:0; }
+.category-thumb:not(.loaded)::after{
+  content:'';
+  position:absolute; inset:0;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
+  background-size:200% 100%;
+  animation:shimmer 1.3s infinite;
+}
+.category-item span{
+  font-size:var(--text-xs);
+  font-weight:500;
+  color:var(--color-muted);
+  white-space:nowrap;
+  transition:color .25s var(--ease), font-weight .25s var(--ease);
+}
+.category-item:hover .category-thumb{ transform:translateY(-2px); }
+.category-item.active .category-thumb{
+  border-color:var(--color-orange);
+  color:var(--color-orange);
+  box-shadow:0 4px 12px rgba(239,111,31,.18);
+}
+.category-item.active span{ color:var(--color-orange); font-weight:600; }
+
+@keyframes shimmer{ 
+  0%{ background-position:200% 0; } 
+  100%{ background-position:-200% 0; } 
+}
+
+/* =========================================================
+   MAIN / SECTION HEADER
+   ========================================================= */
+.main-content{ flex:1; padding-bottom:96px; }
+
+.menu-section{ padding:var(--space-sm) 0 var(--space-xl); }
+
+.section-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:4px 0 var(--space-sm);
+  gap:10px;
+}
+.section-header h2{
+  font-family:var(--font-display);
+  font-size:var(--text-lg);
+  font-weight:600;
+  margin:0;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.section-header h2 i{ color:var(--color-orange); font-size:.9em; }
+.result-count{
+  font-size:var(--text-xs);
+  color:var(--color-muted);
+  white-space:nowrap;
+}
+
+/* =========================================================
+   EMPTY STATES
+   ========================================================= */
+.empty-state{
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  padding:var(--space-xl) var(--space-md);
+  color:var(--color-muted);
+  text-align:center;
+  grid-column:1 / -1;
+}
+.empty-state.show{ display:flex; }
+.empty-state i{ font-size:2.4rem; color:var(--color-orange-pale); }
+.empty-state strong{ color:var(--color-text); font-size:var(--text-base); }
+.empty-state p{ font-size:var(--text-sm); margin:0; }
+
+/* =========================================================
+   FOOD GRID + CARD
+   ========================================================= */
+.food-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:var(--space-sm);
+}
+
+.food-card{
+  display:flex;
+  gap:13px;
+  background:var(--color-card);
+  border-radius:var(--radius-lg);
+  padding:12px;
+  box-shadow:var(--shadow-md);
+  opacity:0;
+  transform:translateY(16px);
+  transition:opacity .5s var(--ease), transform .5s var(--ease), box-shadow .25s var(--ease);
+}
+.food-card.is-visible{ opacity:1; transform:translateY(0); }
+.food-card:hover{ box-shadow:var(--shadow-lg); transform:translateY(-3px); }
+.food-card.hidden-by-filter{ display:none; }
+
+.food-image{
+  position:relative;
+  flex-shrink:0;
+  width:124px;
+  border-radius:14px;
+  overflow:hidden;
+  background:linear-gradient(135deg,#f3e6d9,#e9d4bd);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--color-orange);
+  font-size:1.9rem;
+}
+.food-image img{
+  width:100%;
+  height:100%;
+  min-height:120px;
+  object-fit:cover;
+  transition:opacity .3s var(--ease), transform .4s var(--ease);
+}
+.food-image:not(.loaded) img{ opacity:0; }
+.food-image:not(.loaded)::after{
+  content:'';
+  position:absolute; inset:0;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
+  background-size:200% 100%;
+  animation:shimmer 1.3s infinite;
+}
+.food-card:hover .food-image img{ transform:scale(1.06); }
+
+.food-badge{
+  position:absolute;
+  top:8px; left:8px;
+  display:flex;
+  align-items:center;
+  gap:4px;
+  background:#fff;
+  color:var(--color-orange);
+  font-size:.62rem;
+  font-weight:700;
+  padding:4px 8px;
+  border-radius:var(--radius-full);
+  box-shadow:var(--shadow-sm);
+  white-space:nowrap;
+}
+
+.food-info{ flex:1; min-width:0; display:flex; flex-direction:column; }
+.food-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+.food-title{ font-size:var(--text-base); font-weight:700; margin:2px 0 0; line-height:1.25; }
+
+.wishlist-btn{
+  flex-shrink:0;
+  background:none;
+  border:none;
+  font-size:1.05rem;
+  color:var(--color-muted);
+  cursor:pointer;
+  min-width:32px; min-height:32px;
+  display:flex; align-items:center; justify-content:center;
+  transition:color .2s var(--ease), transform .25s var(--ease);
+}
+.wishlist-btn:active{ transform:scale(.8); }
+.wishlist-btn.active{ color:var(--color-orange); }
+
+.food-meta{
+  display:flex; align-items:center; gap:7px;
+  font-size:var(--text-xs); color:var(--color-text);
+  margin:5px 0 6px; flex-wrap:wrap;
+}
+.food-meta .duration{ display:flex; align-items:center; gap:4px; color:var(--color-muted); }
+
+.food-desc{
+  font-size:var(--text-sm);
+  color:var(--color-muted);
+  line-height:1.45;
+  margin:0 0 10px;
+  flex:1;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+
+.food-bottom{ display:flex; align-items:flex-end; justify-content:space-between; gap:8px; margin-top:auto; }
+.food-price{ font-size:var(--text-lg); font-weight:800; color:var(--color-orange); }
+
+.food-actions{ display:flex; flex-direction:column; align-items:stretch; gap:6px; }
+.btn-add, .btn-view{
+  position:relative;
+  overflow:hidden;
+  border:none;
+  border-radius:var(--radius-full);
+  font-size:var(--text-xs);
+  font-weight:600;
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  padding:9px 14px;
+  min-height:36px;
+  white-space:nowrap;
+  transition:transform .2s var(--ease), box-shadow .2s var(--ease);
+}
+.btn-add{
+  background:linear-gradient(135deg,var(--color-orange-light),var(--color-orange));
+  color:#fff;
+  box-shadow:0 8px 16px rgba(239,111,31,.28);
+}
+.btn-add:hover{ transform:translateY(-1px); }
+.btn-add:active{ transform:scale(.96); }
+.btn-add.added{ background:linear-gradient(135deg,#46c06a,var(--color-green)); }
+.btn-view{ background:var(--color-orange-pale); color:var(--color-orange); }
+.btn-view:hover{ transform:translateY(-1px); }
+.btn-view:active{ transform:scale(.96); }
+
+.ripple-effect{
+  position:absolute;
+  border-radius:50%;
+  transform:scale(0);
+  animation:rippleAnim .6s ease-out;
+  pointer-events:none;
+}
+@keyframes rippleAnim{ to{ transform:scale(2.6); opacity:0; } }
+
+/* =========================================================
+   TOAST
+   ========================================================= */
+.toast{
+  position:fixed;
+  bottom:90px;
+  left:50%;
+  transform:translateX(-50%) translateY(10px);
+  background:var(--color-text);
+  color:#fff;
+  padding:11px 20px;
+  border-radius:var(--radius-full);
+  font-size:var(--text-sm);
+  font-weight:500;
+  display:flex; align-items:center; gap:8px;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .25s var(--ease), transform .25s var(--ease);
+  z-index:160;
+  box-shadow:var(--shadow-lg);
+  white-space:nowrap;
+}
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+.toast i{ color:var(--color-orange-light); }
+
+/* =========================================================
+   BOTTOM NAV (mobile only)
+   ========================================================= */
+.bottom-nav{
+  position:fixed;
+  bottom:0; left:0; right:0;
+  background:#fff;
+  display:flex;
+  justify-content:space-around;
+  align-items:center;
+  padding:9px 0 max(9px, env(safe-area-inset-bottom));
+  box-shadow:0 -8px 22px rgba(43,36,32,.08);
+  z-index:120;
+}
+.nav-item{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  background:none;
+  border:none;
+  color:var(--color-muted);
+  font-size:.68rem;
+  font-weight:500;
+  cursor:pointer;
+  padding:6px 16px;
+  min-width:44px; min-height:44px;
+  transition:color .25s var(--ease);
+}
+.nav-item i{ font-size:1.1rem; transition:transform .25s var(--ease); }
+.nav-item.active{ color:var(--color-orange); }
+.nav-item.active i{ transform:translateY(-3px); }
+.nav-item .cart-badge{
+  position:absolute;
+  top:-2px; right:6px;
+  background:var(--color-orange);
+  color:#fff;
+  font-size:.6rem;
+  font-weight:700;
+  min-width:16px; height:16px;
+  border-radius:var(--radius-full);
+  display:flex; align-items:center; justify-content:center;
+  padding:0 4px;
+  transition:transform .2s var(--ease);
+}
+.cart-badge.bump{ transform:scale(1.35); }
+
+/* =========================================================
+   MODAL
+   ========================================================= */
+.modal-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(20,16,12,.55);
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .25s var(--ease);
+  z-index:180;
+  padding:0;
+}
+.modal-overlay.open{ opacity:1; pointer-events:auto; }
+.modal-sheet{
+  width:100%;
+  max-width:560px;
+  background:#fff;
+  border-radius:26px 26px 0 0;
+  padding:10px 22px 30px;
+  transform:translateY(100%);
+  transition:transform .32s var(--ease);
+  max-height:86vh;
+  overflow-y:auto;
+  position:relative;
+}
+.modal-overlay.open .modal-sheet{ transform:translateY(0); }
+.modal-handle{
+  width:40px; height:5px;
+  border-radius:var(--radius-full);
+  background:var(--color-border);
+  margin:8px auto 16px;
+}
+.modal-close{
+  position:absolute;
+  top:18px; right:18px;
+  width:36px; height:36px;
+  border-radius:50%;
+  border:none;
+  background:var(--color-orange-pale);
+  color:var(--color-orange);
+  font-size:.9rem;
+  cursor:pointer;
+}
+.modal-image{
+  width:100%;
+  height:clamp(150px, 120px + 12vw, 240px);
+  border-radius:18px;
+  background:linear-gradient(135deg,#f3e6d9,#e9d4bd);
+  display:flex; align-items:center; justify-content:center;
+  color:var(--color-orange);
+  font-size:2.6rem;
+  margin-bottom:16px;
+  overflow:hidden;
+}
+.modal-image img{ width:100%; height:100%; object-fit:cover; }
+.modal-sheet h3{ font-family:var(--font-display); font-size:var(--text-xl); font-weight:700; margin:0 0 6px; }
+.modal-sheet .food-meta{ margin:0 0 10px; }
+.modal-desc{ font-size:var(--text-base); color:var(--color-muted); line-height:1.55; margin:0 0 18px; }
+.modal-footer{ display:flex; align-items:center; justify-content:space-between; gap:14px; }
+.modal-price{ font-size:var(--text-2xl); font-weight:800; color:var(--color-orange); }
+.modal-add{
+  flex:1; max-width:240px;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  border:none;
+  border-radius:var(--radius-full);
+  padding:13px 20px;
+  min-height:48px;
+  background:linear-gradient(135deg,var(--color-orange-light),var(--color-orange));
+  color:#fff;
+  font-size:var(--text-base);
+  font-weight:600;
+  cursor:pointer;
+  box-shadow:var(--shadow-btn);
+  position:relative;
+  overflow:hidden;
+}
+
+/* =========================================================
+   FOOTER (desktop only)
+   ========================================================= */
+.site-footer{ display:none; }
+
+/* =========================================================
+   RESPONSIVE: SMARTWATCH  (<=240px)
+   ========================================================= */
+@media (max-width:240px){
+  :root{ --container-padding: 0.6rem; }
+  .decor-wheat, .ambient-glow, .steam-wisp{ display:none; }
+  .header-inner{ gap:6px; padding:6px 0; }
+  .logo-ring{ width:38px; height:38px; }
+  .brand-subtitle, .status-row{ display:none; }
+  .brand-name{ font-size:.85rem; }
+  .table-chip .t-label{ display:none; }
+  .table-chip{ padding:4px 8px; min-width:36px; }
+  .lang-label-text{ display:none; }
+  .lang-btn{ padding:8px; width:44px; height:44px; justify-content:center; }
+  .lang-btn .chev{ display:none; }
+  .search-box{ padding:8px 12px; }
+  .search-box input{ font-size:.72rem; }
+  .filter-btn{ width:36px; height:36px; font-size:.8rem; }
+  .category-thumb{ width:38px; height:38px; border-radius:11px; font-size:.9rem; }
+  .category-item span{ display:none; }
+  .category-row{ gap:6px; }
+  .food-image{ width:60px; }
+  .food-desc, .food-meta, .wishlist-btn, .btn-view{ display:none; }
+  .food-title{ font-size:.78rem; }
+  .food-price{ font-size:.85rem; }
+  .btn-add{ padding:7px 9px; font-size:0; gap:0; min-width:44px; min-height:44px; justify-content:center; }
+  .btn-add i{ font-size:.85rem; }
+  .nav-item span{ display:none; }
+  .nav-item{ padding:6px 10px; }
+}
+
+/* =========================================================
+   RESPONSIVE: LARGE PHONE  (>=480px)
+   ========================================================= */
+@media (min-width:480px){
+  .food-grid{ grid-template-columns:repeat(2,1fr); gap:var(--grid-gap); }
+  .food-card{ flex-direction:column; }
+  .food-image{ width:100%; aspect-ratio:4/3; }
+  .food-image img{ min-height:0; }
+  .food-actions{ flex-direction:row; }
+  .btn-add, .btn-view{ flex:1; }
+}
+
+/* =========================================================
+   RESPONSIVE: TABLET  (>=768px)
+   ========================================================= */
+@media (min-width:768px){
+  .main-content{ padding-bottom:var(--space-xl); }
+  .bottom-nav{ display:none; }
+  .utility-nav{ display:flex; }
+
+  .header-inner{ padding:var(--space-sm) 0; }
+  .brand-name{ white-space:normal; }
+
+  .search-row{ width:100%; }
+
+  .category-row{
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    padding:4px 0;
+  }
+  .category-thumb{ 
+    width:54px; 
+    height:54px; 
+  }
+
+  .food-grid{ grid-template-columns:repeat(2,1fr); gap:var(--grid-gap); }
+
+  .modal-overlay{ align-items:center; padding:var(--space-md); }
+  .modal-sheet{
+    border-radius:var(--radius-lg);
+    transform:translateY(20px) scale(.96);
+    opacity:0;
+    transition:transform .32s var(--ease), opacity .32s var(--ease);
+  }
+  .modal-overlay.open .modal-sheet{ transform:translateY(0) scale(1); opacity:1; }
+}
+
+/* =========================================================
+   RESPONSIVE: IPAD  (>=1024px)
+   ========================================================= */
+@media (min-width:1024px){
+  .food-grid{ grid-template-columns:repeat(3,1fr); }
+  .steam-wisp{ display:block; }
+  .section-header h2{ font-size:var(--text-xl); }
+  .search-row{ width:100%; }
+  .category-thumb{ 
+    width:60px; 
+    height:60px; 
+  }
+}
+
+/* =========================================================
+   RESPONSIVE: DESKTOP  (>=1366px)
+   ========================================================= */
+@media (min-width:1366px){
+  .ambient-glow{ opacity:1; }
+  .food-grid{ grid-template-columns:repeat(4,1fr); }
+  .food-card:hover{ transform:translateY(-6px); }
+  .site-footer{ display:block; }
+  .top-shell{ padding-top:2px; }
+  .search-row{ width:100%; }
+}
+
+/* =========================================================
+   RESPONSIVE: LARGE DESKTOP  (>=1920px)
+   ========================================================= */
+@media (min-width:1920px){
+  .food-grid{ grid-template-columns:repeat(5,1fr); }
+  .search-row{ width:100%; }
+}
+
+/* ---------- Site footer (desktop) ---------- */
+.site-footer{
+  background:var(--color-espresso);
+  color:#f1ede7;
+  padding:var(--space-xl) 0 var(--space-lg);
+  margin-top:var(--space-xl);
+}
+.footer-inner{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:var(--space-lg);
+  flex-wrap:wrap;
+}
+.footer-brand h3{ font-family:var(--font-display); font-size:var(--text-xl); margin:0 0 8px; }
+.footer-brand p{ color:#cbbfae; font-size:var(--text-sm); max-width:340px; margin:0; }
+.footer-meta{ display:flex; gap:var(--space-lg); flex-wrap:wrap; }
+.footer-col h4{ font-size:var(--text-sm); text-transform:uppercase; letter-spacing:.06em; color:#cbbfae; margin:0 0 10px; }
+.footer-col p, .footer-col a{ color:#f1ede7; font-size:var(--text-sm); margin:0 0 6px; text-decoration:none; display:block; }
+.footer-col a:hover{ color:var(--color-orange-light); }
+.footer-bottom{
+  text-align:center;
+  font-size:var(--text-xs);
+  color:#8a7d6c;
+  margin-top:var(--space-lg);
+  border-top:1px solid rgba(255,255,255,.08);
+  padding-top:var(--space-md);
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce){
+  *{ animation:none !important; transition:none !important; }
+  .food-card{ opacity:1 !important; transform:none !important; }
+}
+</style>
+</head>
+<body>
+
+<a href="#main" class="skip-link">Skip to menu</a>
+<div class="ambient-glow" aria-hidden="true"></div>
+
+<div class="app" role="document">
+
+  <div class="top-shell" id="topShell">
+    <!-- ===================== HEADER ===================== -->
+    <header class="site-header">
+      <div class="container">
+        <i class="fa-solid fa-wheat-awn decor-wheat" aria-hidden="true"></i>
+        <div class="header-inner">
+
+          <div class="brand-cluster">
+            <div class="logo-ring">
+              {% if restaurant.logo %}
+                <img src="{{ restaurant.logo.url }}" alt="{{ restaurant.restaurant_name }} logo">
+              {% else %}
+                <i class="fa-solid fa-utensils" aria-hidden="true"></i>
+              {% endif %}
+              <svg class="steam-wisp" viewBox="0 0 34 30" aria-hidden="true">
+                <path class="w1" d="M10 26 C 6 20, 14 16, 11 9" />
+                <path class="w2" d="M22 26 C 18 19, 26 15, 23 8" />
+              </svg>
+            </div>
+
+            <div class="brand-text">
+              <h1 class="brand-name">{{ restaurant.restaurant_name }}</h1>
+              <p class="brand-subtitle">{{ restaurant.sub_name }}</p>
+              <div class="status-row">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span class="status-open">Open</span>
+                <span class="status-sep">&bull;</span>
+                <span>10:00 AM&nbsp;&ndash;&nbsp;10:00 PM</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="header-actions">
+            <div class="table-chip" aria-label="Table {{ table_number }}">
+              <div class="t-label">Table</div>
+              <div class="t-num">{{ table_number }}</div>
+            </div>
+
+            <div class="lang-wrap" id="langWrap">
+              <button type="button" class="lang-btn" id="langBtn" aria-haspopup="true" aria-expanded="false" aria-label="Change language">
+                <i class="fa-solid fa-globe" aria-hidden="true"></i>
+                <span class="lang-label-text" id="langLabel">EN</span>
+                <i class="fa-solid fa-chevron-down chev" aria-hidden="true"></i>
+              </button>
+              <div class="lang-menu" id="langMenu" role="menu">
+                <button type="button" class="lang-option active" data-lang="en" data-label="EN" role="menuitem">English</button>
+                <button type="button" class="lang-option" data-lang="ne" data-label="NE" role="menuitem">नेपाली</button>
+                <button type="button" class="lang-option" data-lang="hi" data-label="HI" role="menuitem">हिन्दी</button>
+                <button type="button" class="lang-option" data-lang="zh" data-label="ZH" role="menuitem">中文</button>
+                <button type="button" class="lang-option" data-lang="es" data-label="ES" role="menuitem">Español</button>
+              </div>
+            </div>
+
+            <nav class="utility-nav" aria-label="Orders and cart">
+              <button type="button" class="icon-btn go-orders" aria-label="Order tracking">
+                <i class="fa-solid fa-clipboard-list" aria-hidden="true"></i>
+              </button>
+              <button type="button" class="icon-btn go-cart" aria-label="View cart">
+                <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
+                <span class="cart-badge">0</span>
+              </button>
+            </nav>
+          </div>
+
+        </div>
+      </div>
+    </header>
+
+    <!-- ===================== TOOLBAR: SEARCH + CATEGORIES ===================== -->
+    <section class="toolbar" aria-label="Search and filter the menu">
+      <div class="container toolbar-inner">
+
+        <div class="search-row">
+          <div class="search-box">
+            <i class="fa-solid fa-search" aria-hidden="true"></i>
+            <input type="search" id="searchInput" placeholder="Search foods..." aria-label="Search foods">
+          </div>
+          <button type="button" class="filter-btn ripple" id="filterBtn" data-ripple="light" aria-label="Open filters">
+            <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <nav class="category-row" id="categoryRow" aria-label="Menu categories">
+          <button type="button" class="category-item active" data-category="all" aria-pressed="true">
+            <span class="category-thumb loaded"><i class="fa-solid fa-table-cells-large"></i></span>
+            <span>All</span>
+          </button>
+          {% for category in categories %}
+          <button type="button" class="category-item" data-category="{{ category.id }}" aria-pressed="false">
+            <span class="category-thumb">
+              {% if category.image %}
+                <img src="{{ category.image.url }}" alt="{{ category.category_name }}">
+              {% else %}
+                <i class="fa-solid fa-utensils"></i>
+              {% endif %}
+            </span>
+            <span>{{ category.category_name }}</span>
+          </button>
+          {% empty %}
+          <p style="font-size:var(--text-sm); color:var(--color-muted); margin:0;">No categories available</p>
+          {% endfor %}
+        </nav>
+
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================== MAIN ===================== -->
+  <main id="main" class="main-content">
+    <div class="container">
+      <section class="menu-section" aria-labelledby="menuHeading">
+        <div class="section-header">
+          <h2 id="menuHeading"><i class="fa-solid fa-fire" aria-hidden="true"></i> Today's Menu</h2>
+          <span class="result-count" id="resultCount" aria-live="polite"></span>
+        </div>
+
+        <div class="food-grid" id="foodList">
+          {% for food in foods %}
+          <article class="food-card"
+                    data-id="{{ food.id }}"
+                    data-category="{{ food.category.id }}"
+                    data-name="{{ food.food_name }}"
+                    data-price="{{ food.price }}"
+                    data-duration="{{ food.preparation_time }} min"
+                    data-desc="{{ food.description }}">
+
+            <div class="food-image">
+              {% if food.image %}
+                <img src="{{ food.image.url }}" alt="{{ food.food_name }}" loading="lazy">
+              {% else %}
+                <i class="fa-solid fa-bowl-food" aria-hidden="true"></i>
+              {% endif %}
+              {% if food.is_popular %}
+              <span class="food-badge"><i class="fa-solid fa-star" aria-hidden="true"></i> Bestseller</span>
+              {% endif %}
+            </div>
+
+            <div class="food-info">
+              <div class="food-top">
+                <h3 class="food-title">{{ food.food_name }}</h3>
+                <button type="button" class="wishlist-btn" aria-pressed="false" aria-label="Save {{ food.food_name }} to wishlist">
+                  <i class="fa-regular fa-heart" aria-hidden="true"></i>
+                </button>
+              </div>
+
+              <div class="food-meta">
+                <span class="duration"><i class="fa-regular fa-clock" aria-hidden="true"></i> {{ food.preparation_time }} min</span>
+              </div>
+
+              <p class="food-desc">{{ food.description }}</p>
+
+              <div class="food-bottom">
+                <span class="food-price">Rs. {{ food.price }}</span>
+                <div class="food-actions">
+                  <button type="button" class="btn-add ripple" data-ripple="light">
+                    <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i> Add
+                  </button>
+                  <button type="button" class="btn-view ripple" data-ripple="dark">
+                    View Details
+                  </button>
+                </div>
+              </div>
+            </div>
+          </article>
+          {% empty %}
+          <div class="empty-state show">
+            <i class="fa-solid fa-utensils" aria-hidden="true"></i>
+            <strong>No dishes found</strong>
+            <p>This menu doesn't have any items yet.</p>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="empty-state" id="emptyState">
+          <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <strong>No matches</strong>
+          <p>Try another search term or category.</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ===================== FOOTER (desktop) ===================== -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <h3>{{ restaurant.restaurant_name }}</h3>
+        <p>{{ restaurant.sub_name }} &mdash; fresh ingredients, made to order, served with care at Table {{ table_number }}.</p>
+      </div>
+      <div class="footer-meta">
+        <div class="footer-col">
+          <h4>Hours</h4>
+          <p>10:00 AM &ndash; 10:00 PM</p>
+          <p>Open every day</p>
+        </div>
+        <div class="footer-col">
+          <h4>Quick links</h4>
+          <a href="#main">Menu</a>
+          <a class="go-orders" href="#" role="button">Order tracking</a>
+          <a class="go-cart" href="#" role="button">Cart</a>
+        </div>
+      </div>
+    </div>
+    <p class="footer-bottom">&copy; <span id="year"></span> {{ restaurant.restaurant_name }}. All rights reserved.</p>
+  </footer>
+
+  <!-- ===================== BOTTOM NAV (mobile) ===================== -->
+  <nav class="bottom-nav" aria-label="Primary">
+    <button type="button" class="nav-item active" data-nav="menu" aria-current="page">
+      <i class="fa-solid fa-utensils" aria-hidden="true"></i>
+      <span>Menu</span>
+    </button>
+    <button type="button" class="nav-item go-orders">
+      <i class="fa-solid fa-clipboard-list" aria-hidden="true"></i>
+      <span>Orders</span>
+    </button>
+    <button type="button" class="nav-item go-cart">
+      <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
+      <span class="cart-badge">0</span>
+      <span>Cart</span>
+    </button>
+  </nav>
+
+  <!-- ===================== DETAILS MODAL ===================== -->
+  <div class="modal-overlay" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-sheet">
+      <div class="modal-handle" aria-hidden="true"></div>
+      <button type="button" class="modal-close" id="modalClose" aria-label="Close details"><i class="fa-solid fa-xmark"></i></button>
+      <div class="modal-image" id="modalImage" aria-hidden="true">
+        <i class="fa-solid fa-utensils"></i>
+      </div>
+      <h3 id="modalTitle"></h3>
+      <div class="food-meta" id="modalMeta"></div>
+      <p class="modal-desc" id="modalDesc"></p>
+      <div class="modal-footer">
+        <span class="modal-price" id="modalPrice"></span>
+        <button type="button" class="modal-add ripple" data-ripple="light" id="modalAddBtn">
+          <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i> Add to Cart
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== TOAST ===================== -->
+  <div class="toast" id="toast"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span id="toastMsg">Added to cart</span></div>
+
+</div>
+<script src="{% static 'js/language.js' %}"></script>
+<script src="{% static 'js/app.js' %}"></script>
+<script>
+
+// Auto-hide header on scroll
+document.addEventListener('DOMContentLoaded', function() {
+  const topShell = document.getElementById('topShell');
+  let lastScrollY = window.scrollY;
+  let ticking = false;
+  let headerHeight = topShell.offsetHeight;
+
+  function updateHeader() {
+    const currentScrollY = window.scrollY;
+    
+    // Only hide if we've scrolled past the header height
+    if (currentScrollY > headerHeight) {
+      if (currentScrollY > lastScrollY) {
+        // Scrolling down - hide header
+        topShell.classList.add('hide-header');
+      } else {
+        // Scrolling up - show header
+        topShell.classList.remove('hide-header');
+      }
+    } else {
+      // At top of page - show header
+      topShell.classList.remove('hide-header');
+    }
+    
+    lastScrollY = currentScrollY;
+    ticking = false;
+  }
+
+  function handleScroll() {
+    if (!ticking) {
+      window.requestAnimationFrame(function() {
+        updateHeader();
+      });
+      ticking = true;
+    }
+  }
+
+  // Update header height on resize
+  function updateHeaderHeight() {
+    headerHeight = topShell.offsetHeight;
+  }
+
+  window.addEventListener('scroll', handleScroll, { passive: true });
+  window.addEventListener('resize', updateHeaderHeight, { passive: true });
+  
+  // Initial call to set correct state
+  updateHeaderHeight();
+});
+const langManager = new LanguageManager();
+document.addEventListener('DOMContentLoaded', function () {
+
+  /* ---------- Year ---------- */
+  var yearEl = document.getElementById('year');
+  if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+  /* ---------- Sticky shadow ---------- */
+  var topShell = document.getElementById('topShell');
+  window.addEventListener('scroll', function () {
+    topShell.classList.toggle('scrolled', window.scrollY > 8);
+  }, { passive: true });
+
+  /* ---------- Image / thumb loading shimmer ---------- */
+  document.querySelectorAll('.food-image, .category-thumb').forEach(function (wrap) {
+    var img = wrap.querySelector('img');
+    if (!img) { wrap.classList.add('loaded'); return; }
+    if (img.complete && img.naturalWidth) { wrap.classList.add('loaded'); }
+    else {
+      img.addEventListener('load', function () { wrap.classList.add('loaded'); });
+      img.addEventListener('error', function () { wrap.classList.add('loaded'); });
+    }
+  });
+
+  /* ---------- Scroll reveal for food cards ---------- */
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.food-card'));
+  if ('IntersectionObserver' in window) {
+    var revealObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    cards.forEach(function (card) { revealObserver.observe(card); });
+  } else {
+    cards.forEach(function (card) { card.classList.add('is-visible'); });
+  }
+
+  /* ---------- Ripple effect ---------- */
+  document.querySelectorAll('.ripple').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      var rect = btn.getBoundingClientRect();
+      var size = Math.max(rect.width, rect.height) * 1.4;
+      var ripple = document.createElement('span');
+      ripple.className = 'ripple-effect';
+      ripple.style.width = ripple.style.height = size + 'px';
+      var x = (e.clientX || rect.left + rect.width / 2) - rect.left - size / 2;
+      var y = (e.clientY || rect.top + rect.height / 2) - rect.top - size / 2;
+      ripple.style.left = x + 'px';
+      ripple.style.top = y + 'px';
+      ripple.style.background = btn.dataset.ripple === 'dark' ? 'rgba(43,36,32,.18)' : 'rgba(255,255,255,.5)';
+      btn.style.position = btn.style.position || 'relative';
+      btn.appendChild(ripple);
+      setTimeout(function () { ripple.remove(); }, 600);
+    });
+  });
+
+  /* ---------- Language dropdown ---------- */
+  var langWrap = document.getElementById('langWrap');
+  var langBtn = document.getElementById('langBtn');
+  var langLabel = document.getElementById('langLabel');
+
+  function closeLangMenu() {
+    langWrap.classList.remove('open');
+    langBtn.setAttribute('aria-expanded', 'false');
+  }
+  langBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var isOpen = langWrap.classList.toggle('open');
+    langBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  });
+  document.querySelectorAll('.lang-option').forEach(function (opt) {
+    opt.addEventListener('click', function () {
+      document.querySelectorAll('.lang-option').forEach(function (o) { o.classList.remove('active'); });
+      opt.classList.add('active');
+      langLabel.textContent = opt.dataset.label;
+      closeLangMenu();
+    });
+  });
+  document.addEventListener('click', function (e) {
+    if (!langWrap.contains(e.target)) closeLangMenu();
+  });
+
+  /* ---------- Category keyboard roving focus ---------- */
+  var categoryRow = document.getElementById('categoryRow');
+  categoryRow.addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    var items = Array.prototype.slice.call(categoryRow.querySelectorAll('.category-item'));
+    var idx = items.indexOf(document.activeElement);
+    if (idx === -1) return;
+    e.preventDefault();
+    var next = e.key === 'ArrowRight' ? items[(idx + 1) % items.length] : items[(idx - 1 + items.length) % items.length];
+    next.focus();
+    next.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  });
+
+  /* ---------- Search + category filtering ---------- */
+  var searchInput = document.getElementById('searchInput');
+  var emptyState = document.getElementById('emptyState');
+  var resultCount = document.getElementById('resultCount');
+  var activeCategory = 'all';
+
+  function getFoodCards() { return Array.prototype.slice.call(document.querySelectorAll('.food-card')); }
+
+  function applyFilters() {
+    var all = getFoodCards();
+    var term = (searchInput.value || '').trim().toLowerCase();
+    var visible = 0;
+    all.forEach(function (card) {
+      var name = (card.dataset.name || '').toLowerCase();
+      var desc = (card.dataset.desc || '').toLowerCase();
+      var cat = card.dataset.category;
+      var matchesSearch = !term || name.indexOf(term) !== -1 || desc.indexOf(term) !== -1;
+      var matchesCategory = activeCategory === 'all' || cat === activeCategory;
+      var shouldShow = matchesSearch && matchesCategory;
+      card.classList.toggle('hidden-by-filter', !shouldShow);
+      if (shouldShow) visible++;
+    });
+    if (emptyState) emptyState.classList.toggle('show', all.length > 0 && visible === 0);
+    if (resultCount) resultCount.textContent = visible + (visible === 1 ? ' dish' : ' dishes');
+  }
+
+  if (searchInput) searchInput.addEventListener('input', applyFilters);
+
+  document.querySelectorAll('.category-item').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.category-item').forEach(function (b) {
+        b.classList.remove('active');
+        b.setAttribute('aria-pressed', 'false');
+      });
+      btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
+      activeCategory = btn.dataset.category;
+      applyFilters();
+    });
+  });
+
+  applyFilters();
+
+  /* ---------- Wishlist toggle ---------- */
+  document.querySelectorAll('.wishlist-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var active = btn.classList.toggle('active');
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      var icon = btn.querySelector('i');
+      icon.className = active ? 'fa-solid fa-heart' : 'fa-regular fa-heart';
+    });
+  });
+
+  /* ---------- Cart badge ---------- 
+  var cartCount = 0;
+  function bumpCart(amount) {
+    cartCount += (amount || 1);
+    document.querySelectorAll('.cart-badge').forEach(function (badge) {
+      badge.textContent = cartCount;
+      badge.classList.add('bump');
+      setTimeout(function () { badge.classList.remove('bump'); }, 250);
+    });
+  } */
+
+  /* ---------- Toast ---------- */
+  var toast = document.getElementById('toast');
+  var toastMsg = document.getElementById('toastMsg');
+  var toastTimer;
+  function showToast(msg) {
+    toastMsg.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 2200);
+  }
+
+  /* ---------- Add to cart ---------- */
+  document.querySelectorAll('.btn-add').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      bumpCart(1);
+      showToast('Added to cart');
+      var original = btn.innerHTML;
+      btn.classList.add('added');
+      btn.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> Added';
+      setTimeout(function () {
+        btn.innerHTML = original;
+        btn.classList.remove('added');
+      }, 1400);
+    });
+  });
+
+  /* ---------- Modal ---------- */
+  var modalOverlay = document.getElementById('modalOverlay');
+  var modalTitle = document.getElementById('modalTitle');
+  var modalDesc = document.getElementById('modalDesc');
+  var modalPrice = document.getElementById('modalPrice');
+  var modalMeta = document.getElementById('modalMeta');
+  var modalImage = document.getElementById('modalImage');
+  var modalClose = document.getElementById('modalClose');
+  var modalAddBtn = document.getElementById('modalAddBtn');
+  var lastFocusedEl = null;
+
+  function openModal(card) {
+    lastFocusedEl = document.activeElement;
+    modalTitle.textContent = card.dataset.name || '';
+    modalDesc.textContent = card.dataset.desc || '';
+    modalPrice.textContent = 'Rs. ' + (card.dataset.price || '');
+    modalMeta.innerHTML = '<span class="duration"><i class="fa-regular fa-clock" aria-hidden="true"></i> ' + (card.dataset.duration || '') + '</span>';
+
+    var cardImg = card.querySelector('.food-image img');
+    modalImage.innerHTML = '';
+    if (cardImg) {
+      var cloned = cardImg.cloneNode();
+      cloned.removeAttribute('style');
+      cloned.removeAttribute('loading');
+      modalImage.appendChild(cloned);
+    } else {
+      modalImage.innerHTML = '<i class="fa-solid fa-utensils" aria-hidden="true"></i>';
+    }
+
+    modalOverlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    modalClose.focus();
+  }
+
+  function closeModal() {
+    modalOverlay.classList.remove('open');
+    document.body.style.overflow = '';
+    if (lastFocusedEl) lastFocusedEl.focus();
+  }
+
+  document.querySelectorAll('.btn-view').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var card = btn.closest('.food-card');
+      if (card) openModal(card);
+    });
+  });
+
+  modalClose.addEventListener('click', closeModal);
+  modalOverlay.addEventListener('click', function (e) {
+    if (e.target === modalOverlay) closeModal();
+  });
+  modalAddBtn.addEventListener('click', function () {
+    bumpCart(1);
+    showToast('Added to cart');
+    closeModal();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      if (modalOverlay.classList.contains('open')) closeModal();
+      closeLangMenu();
+    }
+  });
+
+  /* ---------- Navigation to Django views ---------- */
+  document.querySelectorAll('.go-orders').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.preventDefault();
+      window.location.href = "{% url 'order_tracking' table_number=table_number %}";
+    });
+  });
+  document.querySelectorAll('.go-cart').forEach(function (b) {
+    b.addEventListener('click', function (e) {
+      e.preventDefault();
+      window.location.href = "{% url 'cart' table_number=table_number %}";
+    });
+  });
+
+});
+</script>
+
+</body>
+</html>
