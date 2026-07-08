@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'menu',
     'kitchen',
     'billing',
+    'qr_code_gen',
     
 ]
 

@@ -11,6 +11,7 @@ urlpatterns = [
     path('kitchen/', include('kitchen.urls', namespace='kitchen')),
 
     path('billing/', include('billing.urls')),
+    path('qr_gen/', include('qr_code_gen.urls')),
 ]
 
 if settings.DEBUG:
