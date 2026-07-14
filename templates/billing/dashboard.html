@@ -1,0 +1,911 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>{% if restaurant %}{{ restaurant.restaurant_name }} | {% endif %}Billing Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+<style>
+  :root{
+    --sidebar-w:270px;
+    --bg:#F5F6F8;
+    --card-bg:#FFFFFF;
+    --border:#ECECEF;
+    --text-1:#16181C;
+    --text-2:#6B7280;
+    --text-3:#9CA3AF;
+    --brand:#10B981;
+    --brand-dark:#059669;
+    --brand-bg:#E6F9F1;
+    --c-pending:#F59E0B;
+    --c-pending-bg:#FEF3D9;
+    --c-paid:#16A34A;
+    --c-paid-bg:#DDF6E6;
+    --c-awaiting:#6366F1;
+    --c-awaiting-bg:#E8E7FD;
+    --radius-sm:8px;
+    --radius-md:12px;
+    --radius-lg:16px;
+    --radius-xl:20px;
+    --shadow-sm:0 1px 2px rgba(16,24,40,.06);
+    --shadow-md:0 4px 14px rgba(16,24,40,.08);
+    --shadow-lg:0 16px 40px rgba(16,24,40,.18);
+    --gradient-brand:linear-gradient(135deg, #10B981, #059669);
+    --transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{margin:0;font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text-1);-webkit-font-smoothing:antialiased;}
+  ul{list-style:none;margin:0;padding:0;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;}
+  select{font-family:inherit;}
+  .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;line-height:1;vertical-align:middle;user-select:none;}
+  :focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:4px;}
+
+  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:#D9DADD;border-radius:10px;}
+  ::-webkit-scrollbar-thumb:hover{background:#C5C6CC;}
+
+  .app{display:flex;height:100vh;overflow:hidden;}
+
+  /* ===== SIDEBAR ===== */
+  .sidebar{
+    width:var(--sidebar-w);flex-shrink:0;
+    background:#0F172A;color:#fff;
+    display:flex;flex-direction:column;height:100vh;
+    z-index:50;transition:transform .3s cubic-bezier(0.4,0,0.2,1);
+    overflow:hidden;
+  }
+  .sidebar-logo{display:flex;align-items:center;gap:14px;padding:24px 22px 20px;border-bottom:1px solid rgba(255,255,255,.06);}
+  .logo-icon{
+    width:44px;height:44px;border-radius:12px;
+    background:var(--gradient-brand);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+    box-shadow:0 4px 16px rgba(16,185,129,.4);
+    overflow:hidden;
+  }
+  .logo-icon .material-symbols-outlined{color:#fff;font-size:26px;}
+  .logo-icon img{width:100%;height:100%;object-fit:cover;display:block;}
+  .logo-text-main{font-weight:700;font-size:18px;letter-spacing:1px;color:#fff;line-height:1.1;}
+  .logo-text-sub{font-size:9.5px;letter-spacing:2.5px;color:var(--brand);font-weight:600;margin-top:3px;text-transform:uppercase;}
+
+  .sidebar-nav{padding:12px 14px;display:flex;flex-direction:column;gap:2px;}
+  .nav-item{
+    display:flex;align-items:center;gap:12px;
+    padding:11px 14px;border-radius:10px;
+    color:#A9ACB4;font-size:13.5px;font-weight:500;
+    border:none;background:transparent;width:100%;text-align:left;
+    transition:var(--transition);
+  }
+  .nav-item .material-symbols-outlined{font-size:20px;flex-shrink:0;}
+  .nav-item:hover{background:rgba(255,255,255,.06);color:#fff;}
+  .nav-item.active{background:var(--gradient-brand);color:#fff;box-shadow:0 4px 16px rgba(16,185,129,.35);}
+  .nav-item .nav-label{flex:1;}
+  .nav-item .nav-badge{background:rgba(255,255,255,.15);font-size:10.5px;font-weight:600;padding:2px 10px;border-radius:20px;min-width:24px;text-align:center;}
+  .nav-item.active .nav-badge{background:rgba(255,255,255,.25);}
+
+  .sidebar-spacer{flex:1;min-height:12px;}
+
+  .sidebar-bottom{padding:12px 16px 16px;border-top:1px solid rgba(255,255,255,.06);}
+  .summary-card{background:rgba(255,255,255,.04);border-radius:var(--radius-md);padding:16px 18px;border:1px solid rgba(255,255,255,.06);}
+  .sc-label{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:#82858D;font-weight:600;}
+  .sc-number{font-size:28px;font-weight:700;color:#fff;margin:2px 0 12px;}
+  .sc-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:12.5px;color:#C8CACF;}
+  .sc-row+.sc-row{border-top:1px solid rgba(255,255,255,.05);}
+  .sc-dot-label{display:flex;align-items:center;gap:9px;}
+  .sc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .sc-amt{font-weight:600;color:#fff;}
+
+  .sidebar-clock{display:flex;align-items:center;gap:10px;padding:10px 6px 0;color:#82858D;font-size:11px;}
+  .sidebar-clock .material-symbols-outlined{font-size:18px;color:var(--brand);}
+  .clock-time{font-size:14px;font-weight:600;color:#fff;}
+  .sidebar-clock-text{display:flex;flex-direction:column;}
+
+  .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;backdrop-filter:blur(4px);}
+
+  /* ===== MAIN ===== */
+  .main{flex:1;display:flex;flex-direction:column;height:100vh;min-width:0;background:var(--bg);}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;background:#fff;border-bottom:1px solid var(--border);flex-shrink:0;gap:16px;}
+  .topbar-left{display:flex;align-items:center;gap:14px;min-width:0;}
+  .hamburger-btn{display:none;background:none;border:1px solid var(--border);border-radius:10px;width:40px;height:40px;align-items:center;justify-content:center;color:var(--text-1);transition:var(--transition);}
+  .hamburger-btn:hover{background:var(--bg);}
+  .topbar h1{margin:0;font-size:22px;font-weight:700;color:var(--text-1);}
+  .topbar p{margin:2px 0 0;font-size:12.5px;color:var(--text-2);}
+  .topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+
+  .icon-btn-wrap{position:relative;}
+  .icon-btn{width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;color:var(--text-1);transition:var(--transition);}
+  .icon-btn:hover{border-color:var(--brand);background:var(--brand-bg);}
+
+  .profile-btn{display:flex;align-items:center;gap:10px;padding:4px 8px 4px 4px;border-radius:10px;transition:var(--transition);}
+  .profile-btn:hover{background:var(--bg);}
+  .profile-avatar{width:36px;height:36px;border-radius:50%;background:var(--gradient-brand);display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;}
+  .profile-avatar .material-symbols-outlined{font-size:20px;}
+  .profile-name{text-align:left;}
+  .pname{font-size:13px;font-weight:600;color:var(--text-1);line-height:1.2;}
+  .prole{font-size:10.5px;color:var(--text-2);}
+  .chev{font-size:18px;color:var(--text-3);transition:var(--transition);}
+  .profile-btn:hover .chev{color:var(--text-1);}
+  .dropdown-panel{position:absolute;top:48px;right:0;width:220px;background:#fff;border-radius:var(--radius-md);box-shadow:var(--shadow-lg);border:1px solid var(--border);padding:6px;display:none;z-index:60;}
+  .dropdown-panel.open{display:block;animation:slideDown .25s ease;}
+  @keyframes slideDown{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
+  .profile-dd .pdd-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;font-size:13px;color:var(--text-1);width:100%;background:none;border:none;text-align:left;transition:var(--transition);}
+  .profile-dd .pdd-item .material-symbols-outlined{font-size:18px;color:var(--text-2);}
+  .profile-dd .pdd-item:hover{background:var(--bg);}
+  .pdd-item.logout{color:#EF4444;}
+  .pdd-item.logout .material-symbols-outlined{color:#EF4444;}
+
+  /* ===== STAT ROW ===== */
+  .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:20px 32px 4px;flex-shrink:0;}
+  .stat-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow-sm);}
+  .stat-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .stat-icon .material-symbols-outlined{font-size:22px;}
+  .stat-icon.pending{background:var(--c-pending-bg);color:var(--c-pending);}
+  .stat-icon.paid{background:var(--c-paid-bg);color:var(--c-paid);}
+  .stat-icon.revenue{background:var(--brand-bg);color:var(--brand-dark);}
+  .stat-icon.awaiting{background:var(--c-awaiting-bg);color:var(--c-awaiting);}
+  .stat-label{font-size:11px;color:var(--text-2);font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
+  .stat-value{font-size:21px;font-weight:700;color:var(--text-1);margin-top:2px;}
+
+  /* ===== TABS ===== */
+  .tabs-row{display:flex;align-items:center;justify-content:space-between;padding:16px 32px 12px;background:var(--bg);flex-shrink:0;gap:16px;flex-wrap:wrap;}
+  .tabs{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:4px;}
+  .tab-btn{background:none;border:none;padding:9px 18px;font-size:13px;font-weight:600;color:var(--text-2);display:flex;align-items:center;gap:8px;border-radius:10px;transition:var(--transition);}
+  .tab-btn .tab-count{font-size:10.5px;font-weight:700;color:var(--text-2);background:var(--bg);padding:1px 9px;border-radius:20px;transition:var(--transition);}
+  .tab-btn.active{color:#fff;background:var(--gradient-brand);box-shadow:0 4px 12px rgba(16,185,129,.3);}
+  .tab-btn.active .tab-count{background:rgba(255,255,255,.25);color:#fff;}
+  .tab-btn:hover:not(.active){color:var(--text-1);}
+
+  .search-wrap{position:relative;}
+  .search-wrap .material-symbols-outlined{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--text-3);}
+  .search-input{border:1px solid var(--border);background:#fff;padding:9px 14px 9px 38px;border-radius:24px;font-size:12.5px;font-family:'Poppins',sans-serif;color:var(--text-1);min-width:200px;transition:var(--transition);}
+  .search-input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(16,185,129,.15);}
+
+  /* ===== BOARD ===== */
+  .board-wrap{flex:1;min-height:0;overflow-y:auto;padding:6px 32px 28px;}
+  .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;}
+
+  .bill-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:18px;box-shadow:var(--shadow-sm);transition:var(--transition);animation:cardIn .3s ease;display:flex;flex-direction:column;gap:12px;}
+  .bill-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);}
+  @keyframes cardIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+  .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+  .card-top-left{display:flex;flex-direction:column;gap:4px;}
+  .table-tag{font-size:15px;font-weight:700;color:var(--text-1);}
+  .bill-tag{font-size:11px;color:var(--text-3);font-weight:500;}
+
+  .status-pill{font-size:10.5px;font-weight:700;letter-spacing:.4px;padding:4px 12px;border-radius:20px;color:#fff;white-space:nowrap;}
+  .status-pill.pending{background:var(--c-pending);}
+  .status-pill.paid{background:var(--c-paid);}
+  .status-pill.awaiting{background:var(--c-awaiting);}
+
+  .card-meta{display:flex;flex-direction:column;gap:6px;}
+  .meta-row{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-2);}
+  .meta-row .material-symbols-outlined{font-size:15px;color:var(--text-3);}
+  .meta-row.time-ago{color:#B45309;font-weight:500;}
+  .meta-row.time-ago .material-symbols-outlined{color:#B45309;}
+
+  .card-breakdown{display:flex;flex-direction:column;gap:3px;padding:6px 0 2px;}
+  .breakdown-row{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--text-2);}
+  .breakdown-row.discount{color:var(--c-paid);font-weight:600;}
+
+  .card-total-row{display:flex;align-items:center;justify-content:space-between;border-top:1px dashed var(--border);border-bottom:1px dashed var(--border);padding:10px 0;}
+  .card-total-row span:first-child{font-size:12px;color:var(--text-2);font-weight:500;}
+  .total-amt{font-size:18px;font-weight:800;color:var(--brand-dark);}
+
+  .card-actions{display:flex;gap:8px;}
+  .btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 12px;border-radius:9px;font-size:12.5px;font-weight:600;border:1px solid transparent;transition:var(--transition);}
+  .btn .material-symbols-outlined{font-size:16px;}
+  .btn:active{transform:scale(.96);}
+  .btn:disabled{opacity:.6;cursor:not-allowed;}
+  .btn-outline{background:#fff;border-color:#D9DADD;color:var(--text-1);}
+  .btn-outline:hover{border-color:var(--text-2);background:var(--bg);}
+  .btn-paid{background:var(--gradient-brand);color:#fff;box-shadow:0 4px 12px rgba(16,185,129,.3);}
+  .btn-paid:hover{box-shadow:0 6px 20px rgba(16,185,129,.4);transform:translateY(-1px);}
+  .btn-accept{background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;box-shadow:0 4px 12px rgba(99,102,241,.3);}
+  .btn-accept:hover{box-shadow:0 6px 20px rgba(99,102,241,.4);transform:translateY(-1px);}
+  .btn-revert{background:#fff;border-color:#FCA5A5;color:#DC2626;}
+  .btn-revert:hover{background:#FEF2F2;}
+
+  .empty-board{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-3);gap:10px;padding:70px 10px;text-align:center;}
+  .empty-board .material-symbols-outlined{font-size:48px;color:#D9DADD;}
+  .empty-board span{font-size:13.5px;}
+
+  /* ===== FOOTER ===== */
+  .realtime-footer{display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:0 32px 14px;flex-shrink:0;font-size:11px;color:var(--text-3);}
+  .pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--c-paid);position:relative;}
+  .pulse-dot::after{content:'';position:absolute;inset:0;border-radius:50%;background:var(--c-paid);animation:pulse 1.6s ease-out infinite;}
+  @keyframes pulse{0%{opacity:.6;transform:scale(1);}100%{opacity:0;transform:scale(2.4);}}
+
+  /* ===== MODAL ===== */
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,17,21,.6);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;backdrop-filter:blur(6px);}
+  .modal-overlay.open{display:flex;}
+  .modal-box{background:#fff;width:540px;max-width:100%;max-height:88vh;overflow-y:auto;border-radius:var(--radius-xl);box-shadow:var(--shadow-lg);animation:modalIn .25s ease;}
+  @keyframes modalIn{from{opacity:0;transform:translateY(16px) scale(.97);}to{opacity:1;transform:translateY(0) scale(1);}}
+  .modal-header{display:flex;align-items:flex-start;justify-content:space-between;padding:20px 24px 14px;border-bottom:1px solid var(--border);}
+  .mh-id{font-size:18px;font-weight:700;}
+  .mh-sub{font-size:12px;color:var(--text-2);margin-top:2px;}
+  .modal-close{width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;color:var(--text-2);transition:var(--transition);flex-shrink:0;}
+  .modal-close:hover{background:var(--bg);border-color:var(--text-2);}
+  .modal-body{padding:20px 24px;}
+  .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+  .modal-field{background:var(--bg);border-radius:var(--radius-sm);padding:10px 14px;}
+  .mf-label{font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;font-weight:600;}
+  .mf-value{font-size:13px;font-weight:600;color:var(--text-1);margin-top:3px;display:flex;align-items:center;gap:6px;}
+  .modal-section-title{font-size:11px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 10px;}
+  .modal-items{display:flex;flex-direction:column;gap:8px;}
+  .modal-item-row{display:flex;align-items:flex-start;gap:10px;font-size:13px;padding:8px 10px;border-radius:8px;background:var(--bg);}
+  .mi-qty{font-weight:700;color:var(--brand-dark);width:26px;flex-shrink:0;}
+  .mi-name-wrap{flex:1;}
+  .mi-name{color:var(--text-1);font-weight:500;}
+  .mi-note{font-size:10.5px;color:var(--text-2);font-style:italic;margin-top:2px;}
+  .mi-amt{font-size:12.5px;font-weight:600;color:var(--text-1);flex-shrink:0;}
+
+  .modal-totals{margin-top:16px;padding-top:12px;border-top:1px dashed var(--border);display:flex;flex-direction:column;gap:6px;}
+  .mt-row{display:flex;justify-content:space-between;font-size:13px;color:var(--text-2);}
+  .mt-row.grand{font-size:16px;font-weight:800;color:var(--text-1);margin-top:6px;padding-top:10px;border-top:1px solid var(--border);}
+
+  .modal-actions{display:flex;gap:10px;margin-top:20px;}
+  .btn-print{background:var(--bg);border:1px solid var(--border);color:var(--text-1);}
+  .btn-print:hover{background:#EFEFF1;}
+
+  /* ===== TOAST ===== */
+  .toast-wrap{position:fixed;bottom:28px;right:28px;display:flex;flex-direction:column;gap:10px;z-index:200;}
+  .toast{display:flex;align-items:center;gap:10px;background:#16181C;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);animation:toastIn .35s ease;max-width:340px;}
+  @keyframes toastIn{from{opacity:0;transform:translateX(40px) scale(.95);}to{opacity:1;transform:translateX(0) scale(1);}}
+  .toast .material-symbols-outlined{font-size:20px;flex-shrink:0;}
+  .toast.success .material-symbols-outlined{color:var(--c-paid);}
+  .toast.error .material-symbols-outlined{color:#EF4444;}
+
+  /* ===== RESPONSIVE ===== */
+  @media(max-width:1280px){
+    .stat-row{grid-template-columns:repeat(2,1fr);}
+  }
+  @media(max-width:900px){
+    .sidebar{position:fixed;top:0;left:0;transform:translateX(-100%);}
+    .sidebar.open{transform:translateX(0);}
+    .sidebar-overlay.open{display:block;}
+    .hamburger-btn{display:flex;}
+    .topbar{padding:14px 18px;}
+    .stat-row{padding:16px 18px 4px;}
+    .tabs-row{padding:14px 18px 10px;}
+    .board-wrap{padding:6px 18px 24px;}
+    .realtime-footer{padding:0 18px 12px;justify-content:center;}
+    .profile-name{display:none;}
+    .topbar h1{font-size:18px;}
+  }
+  @media(max-width:560px){
+    .stat-row{grid-template-columns:1fr;}
+    .modal-grid{grid-template-columns:1fr;}
+    .tabs{flex-wrap:wrap;}
+    .tab-btn{font-size:11.5px;padding:8px 12px;}
+    .search-input{min-width:140px;}
+    .board{grid-template-columns:1fr;}
+  }
+  @media(prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important;}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ========== SIDEBAR ========== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+        {% if restaurant and restaurant.logo %}
+          <img src="{{ restaurant.logo.url }}" alt="{{ restaurant.restaurant_name }}">
+        {% else %}
+          <span class="material-symbols-outlined">receipt_long</span>
+        {% endif %}
+      </div>
+      <div>
+        <div class="logo-text-main">{% if restaurant %}{{ restaurant.restaurant_name|upper }}{% else %}FLAVORIA{% endif %}</div>
+        <div class="logo-text-sub">Billing Desk</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="nav-item active" id="navDashboard">
+        <span class="material-symbols-outlined">dashboard</span>
+        <span class="nav-label">Dashboard</span>
+      </button>
+      <button class="nav-item" id="navReport" onclick="window.location='{% url 'billing:report' %}'">
+        <span class="material-symbols-outlined">insights</span>
+        <span class="nav-label">Sales Report</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="sidebar-bottom">
+      <div class="summary-card">
+        <div class="sc-label">Pending Bills</div>
+        <div class="sc-number" id="sidebarPendingCount">0</div>
+        <div class="sc-row">
+          <span class="sc-dot-label"><span class="sc-dot" style="background:var(--c-pending)"></span>Awaiting Payment</span>
+          <span class="sc-amt" id="sidebarPendingTotal">Rs. 0</span>
+        </div>
+        <div class="sc-row">
+          <span class="sc-dot-label"><span class="sc-dot" style="background:var(--c-paid)"></span>Paid Today</span>
+          <span class="sc-amt" id="sidebarPaidTotal">Rs. 0</span>
+        </div>
+      </div>
+      <div class="sidebar-clock">
+        <span class="material-symbols-outlined">schedule</span>
+        <div class="sidebar-clock-text">
+          <span class="clock-time" id="clockTime">{{ now }}</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ========== MAIN ========== -->
+  <div class="main">
+
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger-btn" id="hamburgerBtn" aria-label="Toggle menu">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+        <div>
+          <h1>Billing Dashboard</h1>
+          <p>Live view of table bills &amp; payments</p>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <div class="icon-btn-wrap">
+          <a class="icon-btn" href="{% url 'billing:report' %}" aria-label="Sales report">
+            <span class="material-symbols-outlined">bar_chart</span>
+          </a>
+        </div>
+
+        <div class="icon-btn-wrap">
+          <button class="profile-btn" id="profileBtn">
+            <div class="profile-avatar"><span class="material-symbols-outlined">person</span></div>
+            <div class="profile-name">
+              <div class="pname">{% if staff %}{{ staff.name }}{% else %}Staff{% endif %}</div>
+              <div class="prole">{% if staff %}{{ staff.get_role_display }}{% else %}&nbsp;{% endif %}</div>
+            </div>
+            <span class="material-symbols-outlined chev">expand_more</span>
+          </button>
+          <div class="dropdown-panel profile-dd" id="profileDropdown">
+            <button class="pdd-item logout" onclick="window.location='{% url 'billing:logout' %}'">
+              <span class="material-symbols-outlined">logout</span> Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== STATS ===== -->
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-icon pending"><span class="material-symbols-outlined">hourglass_top</span></div>
+        <div>
+          <div class="stat-label">Pending Bills</div>
+          <div class="stat-value" id="statPendingCount">0</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon revenue"><span class="material-symbols-outlined">payments</span></div>
+        <div>
+          <div class="stat-label">Pending Amount</div>
+          <div class="stat-value" id="statPendingTotal">Rs. 0</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon paid"><span class="material-symbols-outlined">task_alt</span></div>
+        <div>
+          <div class="stat-label">Paid Today</div>
+          <div class="stat-value" id="statPaidCount">0</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon awaiting"><span class="material-symbols-outlined">restaurant</span></div>
+        <div>
+          <div class="stat-label">Tables Dining</div>
+          <div class="stat-value" id="statAwaitingCount">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TABS ===== -->
+    <div class="tabs-row">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="pending">
+          <span class="material-symbols-outlined" style="font-size:16px;">hourglass_top</span>
+          Pending <span class="tab-count" id="tabCountPending">0</span>
+        </button>
+        <button class="tab-btn" data-tab="paid">
+          <span class="material-symbols-outlined" style="font-size:16px;">task_alt</span>
+          Paid Today <span class="tab-count" id="tabCountPaid">0</span>
+        </button>
+        <button class="tab-btn" data-tab="awaiting">
+          <span class="material-symbols-outlined" style="font-size:16px;">restaurant</span>
+          Awaiting Bill <span class="tab-count" id="tabCountAwaiting">0</span>
+        </button>
+      </div>
+
+      <div class="search-wrap">
+        <span class="material-symbols-outlined">search</span>
+        <input class="search-input" id="searchInput" type="text" placeholder="Search table number&hellip;">
+      </div>
+    </div>
+
+    <!-- ===== BOARD ===== -->
+    <div class="board-wrap">
+      <div class="board" id="board"></div>
+    </div>
+
+    <div class="realtime-footer">
+      <span class="pulse-dot"></span>
+      <span>Live &middot; updates every 5s &middot; last sync <span id="lastSync">--:--:--</span></span>
+    </div>
+  </div>
+</div>
+
+<!-- ========== BILL DETAIL MODAL ========== -->
+<div class="modal-overlay" id="billModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <div class="mh-id" id="modalTableTitle">Table &mdash;</div>
+        <div class="mh-sub" id="modalBillSub">Bill &mdash;</div>
+      </div>
+      <button class="modal-close" id="modalCloseBtn"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-grid">
+        <div class="modal-field">
+          <div class="mf-label">Orders</div>
+          <div class="mf-value" id="modalOrders">&mdash;</div>
+        </div>
+        <div class="modal-field">
+          <div class="mf-label">Requested</div>
+          <div class="mf-value" id="modalRequested">&mdash;</div>
+        </div>
+      </div>
+
+      <div class="modal-section-title">Items</div>
+      <div class="modal-items" id="modalItems"></div>
+
+      <div class="modal-totals">
+        <div class="mt-row"><span>Subtotal</span><span id="modalSubtotal">Rs. 0</span></div>
+        <div class="mt-row"><span>Discount</span><span id="modalDiscount">- Rs. 0</span></div>
+        <div class="mt-row"><span>VAT</span><span id="modalTax">Rs. 0</span></div>
+        <div class="mt-row grand"><span>Grand Total</span><span id="modalGrandTotal">Rs. 0</span></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-print" id="modalPrintBtn">
+          <span class="material-symbols-outlined">print</span> Print Invoice
+        </button>
+        <button class="btn btn-paid" id="modalMarkPaidBtn">
+          <span class="material-symbols-outlined">task_alt</span> Mark as Paid
+        </button>
+        <button class="btn btn-revert" id="modalMarkPendingBtn" style="display:none;">
+          <span class="material-symbols-outlined">undo</span> Revert to Pending
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+{{ data|json_script:"initial-billing-data" }}
+<script>
+(function(){
+  "use strict";
+
+  const CSRF_TOKEN = '{{ csrf_token }}';
+
+  const URLS = {
+    poll:       '{% url "billing:poll" %}',
+    setStatus:  '{% url "billing:set_status" bill_id=999999 %}',
+    billDetail: '{% url "billing:bill_detail" bill_id=999999 %}',
+    invoice:    '{% url "billing:invoice" bill_id=999999 %}',
+    createBill: '{% url "billing:create_bill" table_id=999999 %}',
+  };
+
+  function urlFor(key, id){ return URLS[key].replace('999999', id); }
+
+  let data = JSON.parse(document.getElementById('initial-billing-data').textContent);
+  let activeTab = 'pending';
+  let searchQuery = '';
+  let activeModalBillId = null;
+  let pollTimer = null;
+  let knownPendingIds = new Set((data.pending || []).map(function(b){ return b.bill_id; }));
+
+  /* ---------------- helpers ---------------- */
+  function money(n){
+    n = Number(n) || 0;
+    return 'Rs. ' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+  }
+
+  function escapeHtml(str){
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function showToast(message, type){
+    const wrap = document.getElementById('toastWrap');
+    const el = document.createElement('div');
+    el.className = 'toast ' + (type || 'success');
+    const icon = type === 'error' ? 'error' : 'check_circle';
+    el.innerHTML = '<span class="material-symbols-outlined">' + icon + '</span><span>' + escapeHtml(message) + '</span>';
+    wrap.appendChild(el);
+    setTimeout(function(){
+      el.style.transition = 'opacity .3s ease, transform .3s ease';
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(40px)';
+      setTimeout(function(){ el.remove(); }, 300);
+    }, 3200);
+  }
+
+  /* ---------------- sidebar / clock ---------------- */
+  const sidebar = document.getElementById('sidebar');
+  const sidebarOverlay = document.getElementById('sidebarOverlay');
+  document.getElementById('hamburgerBtn').addEventListener('click', function(){
+    sidebar.classList.add('open'); sidebarOverlay.classList.add('open');
+  });
+  sidebarOverlay.addEventListener('click', function(){
+    sidebar.classList.remove('open'); sidebarOverlay.classList.remove('open');
+  });
+
+  function tickClock(){
+    document.getElementById('clockTime').textContent =
+      new Date().toLocaleTimeString('en-US', { hour12:false });
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  /* ---------------- profile dropdown ---------------- */
+  const profileBtn = document.getElementById('profileBtn');
+  const profileDropdown = document.getElementById('profileDropdown');
+  profileBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    profileDropdown.classList.toggle('open');
+  });
+  document.addEventListener('click', function(){ profileDropdown.classList.remove('open'); });
+
+  /* ---------------- tabs ---------------- */
+  document.querySelectorAll('.tab-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      activeTab = btn.dataset.tab;
+      renderBoard();
+    });
+  });
+
+  document.getElementById('searchInput').addEventListener('input', function(e){
+    searchQuery = e.target.value.trim().toLowerCase();
+    renderBoard();
+  });
+
+  /* ---------------- card builders ---------------- */
+  function buildBreakdownHTML(bill){
+    let rows = '<div class="breakdown-row"><span>Subtotal (' + bill.item_count + ' items)</span><span>' + money(bill.subtotal) + '</span></div>';
+    if (bill.discount > 0){
+      rows += '<div class="breakdown-row discount"><span>Discount</span><span>-' + money(bill.discount) + '</span></div>';
+    }
+    rows += '<div class="breakdown-row"><span>VAT (' + bill.vat_percent + '%)</span><span>' + money(bill.tax) + '</span></div>';
+    return '<div class="card-breakdown">' + rows + '</div>';
+  }
+
+  function buildPendingCard(bill){
+    return (
+      '<div class="bill-card" data-bill-id="' + bill.bill_id + '">' +
+        '<div class="card-top">' +
+          '<div class="card-top-left">' +
+            '<span class="table-tag">Table ' + escapeHtml(bill.table_number) + '</span>' +
+            '<span class="bill-tag">Bill #' + bill.bill_id + ' &middot; ' + bill.orders.join(', ') + '</span>' +
+          '</div>' +
+          '<span class="status-pill pending">Pending</span>' +
+        '</div>' +
+        '<div class="card-meta">' +
+          '<div class="meta-row"><span class="material-symbols-outlined">restaurant_menu</span>' + bill.order_count + ' order(s) &middot; ' + bill.item_count + ' items</div>' +
+          '<div class="meta-row time-ago"><span class="material-symbols-outlined">schedule</span>Requested ' + timeAgoLabel(bill.minutes_ago) + '</div>' +
+        '</div>' +
+        buildBreakdownHTML(bill) +
+        '<div class="card-total-row"><span>Total Due</span><span class="total-amt">' + money(bill.grand_total) + '</span></div>' +
+        '<div class="card-actions">' +
+          '<button class="btn btn-outline js-view-bill" data-id="' + bill.bill_id + '">' +
+            '<span class="material-symbols-outlined">visibility</span> View' +
+          '</button>' +
+          '<button class="btn btn-paid js-mark-paid" data-id="' + bill.bill_id + '">' +
+            '<span class="material-symbols-outlined">task_alt</span> Mark Paid' +
+          '</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function buildPaidCard(bill){
+    return (
+      '<div class="bill-card" data-bill-id="' + bill.bill_id + '">' +
+        '<div class="card-top">' +
+          '<div class="card-top-left">' +
+            '<span class="table-tag">Table ' + escapeHtml(bill.table_number) + '</span>' +
+            '<span class="bill-tag">Bill #' + bill.bill_id + ' &middot; ' + bill.orders.join(', ') + '</span>' +
+          '</div>' +
+          '<span class="status-pill paid">Paid</span>' +
+        '</div>' +
+        '<div class="card-meta">' +
+          '<div class="meta-row"><span class="material-symbols-outlined">restaurant_menu</span>' + bill.order_count + ' order(s) &middot; ' + bill.item_count + ' items</div>' +
+          '<div class="meta-row"><span class="material-symbols-outlined">event_available</span>Paid at ' + escapeHtml(bill.paid_at || '') + '</div>' +
+        '</div>' +
+        buildBreakdownHTML(bill) +
+        '<div class="card-total-row"><span>Total Paid</span><span class="total-amt">' + money(bill.grand_total) + '</span></div>' +
+        '<div class="card-actions">' +
+          '<button class="btn btn-outline js-view-bill" data-id="' + bill.bill_id + '">' +
+            '<span class="material-symbols-outlined">visibility</span> View' +
+          '</button>' +
+          '<a class="btn btn-outline" href="' + urlFor('invoice', bill.bill_id) + '" target="_blank" rel="noopener">' +
+            '<span class="material-symbols-outlined">print</span> Print' +
+          '</a>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function buildAwaitingCard(table){
+    return (
+      '<div class="bill-card" data-table-id="' + table.table_id + '">' +
+        '<div class="card-top">' +
+          '<div class="card-top-left">' +
+            '<span class="table-tag">Table ' + escapeHtml(table.table_number) + '</span>' +
+            '<span class="bill-tag">No bill requested yet</span>' +
+          '</div>' +
+          '<span class="status-pill awaiting">Dining</span>' +
+        '</div>' +
+        '<div class="card-meta">' +
+          '<div class="meta-row"><span class="material-symbols-outlined">restaurant_menu</span>' + table.order_count + ' order(s) placed</div>' +
+        '</div>' +
+        '<div class="card-actions">' +
+          '<button class="btn btn-accept js-create-bill" data-table-id="' + table.table_id + '">' +
+            '<span class="material-symbols-outlined">receipt_long</span> Generate Bill' +
+          '</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function timeAgoLabel(mins){
+    if (mins <= 0) return 'just now';
+    if (mins === 1) return '1 min ago';
+    if (mins < 60) return mins + ' min ago';
+    const hrs = Math.floor(mins / 60);
+    return hrs + 'h ' + (mins % 60) + 'm ago';
+  }
+
+  function emptyStateHTML(icon, text){
+    return (
+      '<div class="empty-board">' +
+        '<span class="material-symbols-outlined">' + icon + '</span>' +
+        '<span>' + text + '</span>' +
+      '</div>'
+    );
+  }
+
+  /* ---------------- board render ---------------- */
+  function renderBoard(){
+    const board = document.getElementById('board');
+    let list, builder, icon, emptyText;
+
+    if (activeTab === 'pending'){
+      list = data.pending; builder = buildPendingCard;
+      icon = 'hourglass_top'; emptyText = 'No pending bills right now.';
+    } else if (activeTab === 'paid'){
+      list = data.paid_today; builder = buildPaidCard;
+      icon = 'task_alt'; emptyText = 'No bills paid yet today.';
+    } else {
+      list = data.awaiting; builder = buildAwaitingCard;
+      icon = 'restaurant'; emptyText = 'Every dining table already has a bill.';
+    }
+
+    let filtered = list;
+    if (searchQuery){
+      filtered = list.filter(function(x){
+        return String(x.table_number).toLowerCase().indexOf(searchQuery) !== -1;
+      });
+    }
+
+    if (!filtered.length){
+      board.innerHTML = emptyStateHTML(icon, emptyText);
+      return;
+    }
+
+    board.innerHTML = filtered.map(builder).join('');
+  }
+
+  function renderStats(){
+    const s = data.stats;
+    document.getElementById('sidebarPendingCount').textContent = s.pending_count;
+    document.getElementById('sidebarPendingTotal').textContent = money(s.pending_total);
+    document.getElementById('sidebarPaidTotal').textContent = money(s.paid_today_total);
+
+    document.getElementById('statPendingCount').textContent = s.pending_count;
+    document.getElementById('statPendingTotal').textContent = money(s.pending_total);
+    document.getElementById('statPaidCount').textContent = s.paid_today_count;
+    document.getElementById('statAwaitingCount').textContent = s.awaiting_count;
+
+    document.getElementById('tabCountPending').textContent = s.pending_count;
+    document.getElementById('tabCountPaid').textContent = s.paid_today_count;
+    document.getElementById('tabCountAwaiting').textContent = s.awaiting_count;
+  }
+
+  function renderAll(){
+    renderStats();
+    renderBoard();
+  }
+  renderAll();
+
+  /* ---------------- bill detail modal ---------------- */
+  const billModal = document.getElementById('billModal');
+
+  function openBillModal(id){
+    fetch(urlFor('billDetail', id))
+      .then(function(res){ return res.json(); })
+      .then(function(bill){
+        activeModalBillId = bill.bill_id;
+        document.getElementById('modalTableTitle').textContent = 'Table ' + bill.table_number;
+        document.getElementById('modalBillSub').textContent = 'Bill #' + bill.bill_id + ' &middot; ' + bill.payment_status.toUpperCase();
+        document.getElementById('modalOrders').textContent = bill.orders.join(', ') || '—';
+        document.getElementById('modalRequested').textContent = bill.requested_at;
+
+        document.getElementById('modalItems').innerHTML = bill.items.map(function(item){
+          return (
+            '<div class="modal-item-row">' +
+              '<span class="mi-qty">x' + item.quantity + '</span>' +
+              '<div class="mi-name-wrap">' +
+                '<div class="mi-name">' + escapeHtml(item.name) + '</div>' +
+                (item.note ? '<div class="mi-note">Note: ' + escapeHtml(item.note) + '</div>' : '') +
+              '</div>' +
+              '<span class="mi-amt">' + money(item.subtotal) + '</span>' +
+            '</div>'
+          );
+        }).join('') || '<p style="font-size:12.5px;color:var(--text-3);">No items found.</p>';
+
+        document.getElementById('modalSubtotal').textContent = money(bill.subtotal);
+        document.getElementById('modalDiscount').textContent = '- ' + money(bill.discount);
+        document.getElementById('modalTax').textContent = money(bill.tax);
+        document.getElementById('modalGrandTotal').textContent = money(bill.grand_total);
+
+        const markPaidBtn = document.getElementById('modalMarkPaidBtn');
+        const markPendingBtn = document.getElementById('modalMarkPendingBtn');
+        if (bill.payment_status === 'paid'){
+          markPaidBtn.style.display = 'none';
+          markPendingBtn.style.display = 'flex';
+        } else {
+          markPaidBtn.style.display = 'flex';
+          markPendingBtn.style.display = 'none';
+        }
+
+        document.getElementById('modalPrintBtn').onclick = function(){
+          window.open(urlFor('invoice', bill.bill_id), '_blank');
+        };
+
+        billModal.classList.add('open');
+      })
+      .catch(function(){ showToast('Could not load bill details.', 'error'); });
+  }
+
+  function closeBillModal(){
+    billModal.classList.remove('open');
+    activeModalBillId = null;
+  }
+
+  document.getElementById('modalCloseBtn').addEventListener('click', closeBillModal);
+  billModal.addEventListener('click', function(e){ if (e.target === billModal) closeBillModal(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeBillModal(); });
+
+  /* ---------------- actions ---------------- */
+  function markPaid(billId, fromModal){
+    return postFormWithStatus(urlFor('setStatus', billId), 'paid').then(function(result){
+      if (result.ok && result.body && result.body.ok){
+        showToast('Bill #' + billId + ' marked as paid.');
+        if (fromModal) closeBillModal();
+        fetchPoll();
+      } else {
+        showToast('Could not update the bill.', 'error');
+      }
+    });
+  }
+
+  function markPending(billId){
+    return postFormWithStatus(urlFor('setStatus', billId), 'unpaid').then(function(result){
+      if (result.ok && result.body && result.body.ok){
+        showToast('Bill #' + billId + ' reverted to pending.');
+        closeBillModal();
+        fetchPoll();
+      } else {
+        showToast('Could not update the bill.', 'error');
+      }
+    });
+  }
+
+  function postFormWithStatus(url, status){
+    const fd = new FormData();
+    fd.append('status', status);
+    return fetch(url, { method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN }, body: fd })
+      .then(function(res){ return res.json().then(function(body){ return { ok: res.ok, body: body }; }); });
+  }
+
+  function createBill(tableId){
+    return fetch(urlFor('createBill', tableId), { method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN } })
+      .then(function(res){ return res.json().then(function(body){ return { ok: res.ok, body: body }; }); })
+      .then(function(result){
+        if (result.ok && result.body && result.body.ok){
+          showToast('Bill generated for review.');
+          fetchPoll();
+        } else {
+          showToast((result.body && result.body.error) || 'Could not generate bill.', 'error');
+        }
+      });
+  }
+
+  document.getElementById('board').addEventListener('click', function(e){
+    const viewBtn = e.target.closest('.js-view-bill');
+    if (viewBtn){ openBillModal(viewBtn.dataset.id); return; }
+
+    const paidBtn = e.target.closest('.js-mark-paid');
+    if (paidBtn){
+      paidBtn.disabled = true;
+      markPaid(paidBtn.dataset.id, false).finally(function(){ paidBtn.disabled = false; });
+      return;
+    }
+
+    const createBtn = e.target.closest('.js-create-bill');
+    if (createBtn){
+      createBtn.disabled = true;
+      createBill(createBtn.dataset.tableId).finally(function(){ createBtn.disabled = false; });
+      return;
+    }
+  });
+
+  document.getElementById('modalMarkPaidBtn').addEventListener('click', function(){
+    if (activeModalBillId) markPaid(activeModalBillId, true);
+  });
+  document.getElementById('modalMarkPendingBtn').addEventListener('click', function(){
+    if (activeModalBillId) markPending(activeModalBillId);
+  });
+
+  /* ---------------- polling ---------------- */
+  function fetchPoll(){
+    fetch(URLS.poll, { cache: 'no-store' })
+      .then(function(res){ return res.json(); })
+      .then(function(newData){
+        const newPendingIds = new Set((newData.pending || []).map(function(b){ return b.bill_id; }));
+        newPendingIds.forEach(function(id){
+          if (!knownPendingIds.has(id)){
+            const bill = newData.pending.find(function(b){ return b.bill_id === id; });
+            if (bill) showToast('New bill requested — Table ' + bill.table_number, 'success');
+          }
+        });
+        knownPendingIds = newPendingIds;
+
+        data = newData;
+        renderAll();
+        document.getElementById('lastSync').textContent = newData.server_time;
+      })
+      .catch(function(){ /* silent — keep last known state */ });
+  }
+
+  document.getElementById('lastSync').textContent = '{{ now }}';
+  pollTimer = setInterval(fetchPoll, 5000);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) fetchPoll(); });
+
+})();
+</script>
+</body>
+</html>

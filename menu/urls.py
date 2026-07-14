@@ -28,4 +28,18 @@ urlpatterns = [
         views.place_order,
         name='place_order',
     ),
+
+    # Customer taps "Request Bill" on order_tracking.html -> creates the Bill
+    path(
+        '<int:table_number>/request-bill/',
+        views.request_bill,
+        name='request_bill',
+    ),
+
+    # Quick-order button on menu.html (water, tissue, pickle, cold drink...)
+    path(
+        '<int:table_number>/quick-order/',
+        views.quick_order,
+        name='quick_order',
+    ),
 ]

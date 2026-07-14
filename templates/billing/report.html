@@ -1,0 +1,475 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>{% if restaurant %}{{ restaurant.restaurant_name }} | {% endif %}Sales Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet"/>
+<style>
+  :root{
+    --sidebar-w:270px;
+    --bg:#F5F6F8;
+    --card-bg:#FFFFFF;
+    --border:#ECECEF;
+    --text-1:#16181C;
+    --text-2:#6B7280;
+    --text-3:#9CA3AF;
+    --brand:#10B981;
+    --brand-dark:#059669;
+    --brand-bg:#E6F9F1;
+    --c-pending:#F59E0B;
+    --c-pending-bg:#FEF3D9;
+    --c-paid:#16A34A;
+    --c-paid-bg:#DDF6E6;
+    --radius-sm:8px;
+    --radius-md:12px;
+    --radius-lg:16px;
+    --radius-xl:20px;
+    --shadow-sm:0 1px 2px rgba(16,24,40,.06);
+    --shadow-md:0 4px 14px rgba(16,24,40,.08);
+    --shadow-lg:0 16px 40px rgba(16,24,40,.18);
+    --gradient-brand:linear-gradient(135deg, #10B981, #059669);
+    --transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{margin:0;font-family:'Poppins',sans-serif;background:var(--bg);color:var(--text-1);-webkit-font-smoothing:antialiased;}
+  ul{list-style:none;margin:0;padding:0;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;}
+  .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;line-height:1;vertical-align:middle;user-select:none;}
+  :focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:4px;}
+
+  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:#D9DADD;border-radius:10px;}
+  ::-webkit-scrollbar-thumb:hover{background:#C5C6CC;}
+
+  .app{display:flex;min-height:100vh;}
+
+  /* ===== SIDEBAR (shared shell with dashboard) ===== */
+  .sidebar{
+    width:var(--sidebar-w);flex-shrink:0;
+    background:#0F172A;color:#fff;
+    display:flex;flex-direction:column;height:100vh;position:sticky;top:0;
+    z-index:50;transition:transform .3s cubic-bezier(0.4,0,0.2,1);
+    overflow:hidden;
+  }
+  .sidebar-logo{display:flex;align-items:center;gap:14px;padding:24px 22px 20px;border-bottom:1px solid rgba(255,255,255,.06);}
+  .logo-icon{width:44px;height:44px;border-radius:12px;background:var(--gradient-brand);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 16px rgba(16,185,129,.4);overflow:hidden;}
+  .logo-icon .material-symbols-outlined{color:#fff;font-size:26px;}
+  .logo-icon img{width:100%;height:100%;object-fit:cover;display:block;}
+  .logo-text-main{font-weight:700;font-size:18px;letter-spacing:1px;color:#fff;line-height:1.1;}
+  .logo-text-sub{font-size:9.5px;letter-spacing:2.5px;color:var(--brand);font-weight:600;margin-top:3px;text-transform:uppercase;}
+
+  .sidebar-nav{padding:12px 14px;display:flex;flex-direction:column;gap:2px;}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;color:#A9ACB4;font-size:13.5px;font-weight:500;border:none;background:transparent;width:100%;text-align:left;transition:var(--transition);}
+  .nav-item .material-symbols-outlined{font-size:20px;flex-shrink:0;}
+  .nav-item:hover{background:rgba(255,255,255,.06);color:#fff;}
+  .nav-item.active{background:var(--gradient-brand);color:#fff;box-shadow:0 4px 16px rgba(16,185,129,.35);}
+  .nav-item .nav-label{flex:1;}
+
+  .sidebar-spacer{flex:1;min-height:12px;}
+  .sidebar-bottom{padding:12px 16px 16px;border-top:1px solid rgba(255,255,255,.06);}
+  .sidebar-clock{display:flex;align-items:center;gap:10px;padding:10px 6px;color:#82858D;font-size:11px;}
+  .sidebar-clock .material-symbols-outlined{font-size:18px;color:var(--brand);}
+  .clock-time{font-size:14px;font-weight:600;color:#fff;}
+  .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40;backdrop-filter:blur(4px);}
+
+  /* ===== MAIN ===== */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg);}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;background:#fff;border-bottom:1px solid var(--border);flex-shrink:0;gap:16px;}
+  .topbar-left{display:flex;align-items:center;gap:14px;min-width:0;}
+  .hamburger-btn{display:none;background:none;border:1px solid var(--border);border-radius:10px;width:40px;height:40px;align-items:center;justify-content:center;color:var(--text-1);transition:var(--transition);}
+  .hamburger-btn:hover{background:var(--bg);}
+  .topbar h1{margin:0;font-size:22px;font-weight:700;color:var(--text-1);}
+  .topbar p{margin:2px 0 0;font-size:12.5px;color:var(--text-2);}
+  .icon-btn{width:40px;height:40px;border-radius:50%;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;color:var(--text-1);transition:var(--transition);}
+  .icon-btn:hover{border-color:var(--brand);background:var(--brand-bg);}
+
+  /* ===== FILTER BAR ===== */
+  .filter-bar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;padding:20px 32px 4px;}
+  .range-tabs{display:flex;gap:6px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:4px;}
+  .range-btn{padding:9px 16px;font-size:12.5px;font-weight:600;color:var(--text-2);border-radius:10px;transition:var(--transition);}
+  .range-btn.active{background:var(--gradient-brand);color:#fff;box-shadow:0 4px 12px rgba(16,185,129,.3);}
+  .range-btn:hover:not(.active){color:var(--text-1);}
+
+  .date-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .date-input{border:1px solid var(--border);background:#fff;padding:9px 12px;border-radius:10px;font-size:12.5px;font-family:'Poppins',sans-serif;color:var(--text-1);}
+  .date-input:focus{outline:none;border-color:var(--brand);}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 16px;border-radius:10px;font-size:12.5px;font-weight:600;border:1px solid transparent;transition:var(--transition);}
+  .btn .material-symbols-outlined{font-size:16px;}
+  .btn-outline{background:#fff;border-color:var(--border);color:var(--text-1);}
+  .btn-outline:hover{border-color:var(--brand);background:var(--brand-bg);}
+  .btn-brand{background:var(--gradient-brand);color:#fff;box-shadow:0 4px 12px rgba(16,185,129,.3);}
+  .btn-brand:hover{box-shadow:0 6px 20px rgba(16,185,129,.4);}
+
+  /* ===== CONTENT ===== */
+  .content{padding:20px 32px 40px;flex:1;}
+
+  .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px;}
+  .stat-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow-sm);}
+  .stat-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .stat-icon .material-symbols-outlined{font-size:22px;}
+  .stat-icon.revenue{background:var(--brand-bg);color:var(--brand-dark);}
+  .stat-icon.bills{background:var(--c-pending-bg);color:var(--c-pending);}
+  .stat-icon.avg{background:#E8E7FD;color:#6366F1;}
+  .stat-icon.tax{background:var(--c-paid-bg);color:var(--c-paid);}
+  .stat-label{font-size:11px;color:var(--text-2);font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
+  .stat-value{font-size:21px;font-weight:700;color:var(--text-1);margin-top:2px;}
+
+  .panel{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);margin-bottom:20px;}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px;}
+  .panel-head h2{margin:0;font-size:15px;font-weight:700;}
+  .panel-head p{margin:2px 0 0;font-size:11.5px;color:var(--text-2);}
+  .panel-body{padding:22px;}
+
+  /* ===== CHART ===== */
+  .chart-wrap{display:flex;align-items:flex-end;gap:10px;height:200px;overflow-x:auto;padding-bottom:6px;}
+  .chart-bar-col{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:34px;flex:1;gap:6px;}
+  .chart-bar{width:100%;max-width:34px;border-radius:8px 8px 3px 3px;background:var(--gradient-brand);transition:height .5s cubic-bezier(.4,0,.2,1);position:relative;min-height:3px;}
+  .chart-bar:hover{filter:brightness(1.08);}
+  .chart-bar-value{font-size:9.5px;font-weight:700;color:var(--text-1);white-space:nowrap;}
+  .chart-bar-label{font-size:9.5px;color:var(--text-3);white-space:nowrap;transform:rotate(0deg);}
+  .chart-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text-3);height:200px;width:100%;}
+  .chart-empty .material-symbols-outlined{font-size:36px;color:#D9DADD;}
+
+  /* ===== TABLE ===== */
+  .table-scroll{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead{background:var(--bg);}
+  th{text-align:left;padding:12px 16px;font-weight:600;color:var(--text-2);font-size:11px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;border-bottom:1px solid var(--border);}
+  td{padding:12px 16px;border-bottom:1px solid var(--border);color:var(--text-1);white-space:nowrap;}
+  tbody tr:hover{background:var(--brand-bg);}
+  tbody tr:last-child td{border-bottom:none;}
+  .cell-total{font-weight:700;color:var(--brand-dark);}
+  .cell-muted{color:var(--text-2);}
+  .paid-tag{display:inline-block;padding:2px 10px;border-radius:20px;font-size:10.5px;font-weight:600;background:var(--c-paid-bg);color:var(--c-paid);}
+
+  .table-empty{padding:50px 20px;text-align:center;color:var(--text-3);}
+  .table-empty .material-symbols-outlined{font-size:38px;color:#D9DADD;display:block;margin:0 auto 8px;}
+
+  /* ===== RESPONSIVE ===== */
+  @media(max-width:1280px){ .stat-row{grid-template-columns:repeat(2,1fr);} }
+  @media(max-width:900px){
+    .sidebar{position:fixed;top:0;left:0;height:100vh;transform:translateX(-100%);}
+    .sidebar.open{transform:translateX(0);}
+    .sidebar-overlay.open{display:block;}
+    .hamburger-btn{display:flex;}
+    .topbar{padding:14px 18px;}
+    .filter-bar{padding:16px 18px 4px;}
+    .content{padding:16px 18px 32px;}
+  }
+  @media(max-width:560px){
+    .stat-row{grid-template-columns:1fr;}
+    .range-tabs{flex-wrap:wrap;}
+  }
+  @media(prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important;}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ========== SIDEBAR ========== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+        {% if restaurant and restaurant.logo %}
+          <img src="{{ restaurant.logo.url }}" alt="{{ restaurant.restaurant_name }}">
+        {% else %}
+          <span class="material-symbols-outlined">receipt_long</span>
+        {% endif %}
+      </div>
+      <div>
+        <div class="logo-text-main">{% if restaurant %}{{ restaurant.restaurant_name|upper }}{% else %}FLAVORIA{% endif %}</div>
+        <div class="logo-text-sub">Billing Desk</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="nav-item" onclick="window.location='{% url 'billing:dashboard' %}'">
+        <span class="material-symbols-outlined">dashboard</span>
+        <span class="nav-label">Dashboard</span>
+      </button>
+      <button class="nav-item active">
+        <span class="material-symbols-outlined">insights</span>
+        <span class="nav-label">Sales Report</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="sidebar-bottom">
+      <div class="sidebar-clock">
+        <span class="material-symbols-outlined">schedule</span>
+        <span class="clock-time" id="clockTime">--:--:--</span>
+      </div>
+      <button class="nav-item" style="color:#EF4444;" onclick="window.location='{% url 'billing:logout' %}'">
+        <span class="material-symbols-outlined">logout</span>
+        <span class="nav-label">Sign Out</span>
+      </button>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ========== MAIN ========== -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="hamburger-btn" id="hamburgerBtn" aria-label="Toggle menu">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+        <div>
+          <h1>Sales Report</h1>
+          <p>Revenue &amp; paid-bill history</p>
+        </div>
+      </div>
+      <a class="icon-btn" href="{% url 'billing:dashboard' %}" aria-label="Back to dashboard">
+        <span class="material-symbols-outlined">arrow_back</span>
+      </a>
+    </div>
+
+    <div class="filter-bar">
+      <div class="range-tabs" id="rangeTabs">
+        <button class="range-btn" data-range="today">Today</button>
+        <button class="range-btn active" data-range="7d">7 Days</button>
+        <button class="range-btn" data-range="30d">30 Days</button>
+        <button class="range-btn" data-range="all">All Time</button>
+      </div>
+      <div class="date-controls">
+        <input type="date" class="date-input" id="startDate">
+        <span style="color:var(--text-3);font-size:12px;">to</span>
+        <input type="date" class="date-input" id="endDate">
+        <button class="btn btn-outline" id="applyRangeBtn">
+          <span class="material-symbols-outlined">filter_alt</span> Apply
+        </button>
+        <button class="btn btn-brand" id="exportBtn">
+          <span class="material-symbols-outlined">download</span> Export CSV
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-icon revenue"><span class="material-symbols-outlined">payments</span></div>
+          <div><div class="stat-label">Total Revenue</div><div class="stat-value" id="statRevenue">Rs. 0</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon bills"><span class="material-symbols-outlined">receipt_long</span></div>
+          <div><div class="stat-label">Bills Paid</div><div class="stat-value" id="statBills">0</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon avg"><span class="material-symbols-outlined">calculate</span></div>
+          <div><div class="stat-label">Average Bill</div><div class="stat-value" id="statAvg">Rs. 0</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon tax"><span class="material-symbols-outlined">account_balance</span></div>
+          <div><div class="stat-label">VAT Collected</div><div class="stat-value" id="statTax">Rs. 0</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Daily Revenue</h2>
+            <p id="chartRangeLabel">Revenue collected per day</p>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="chart-wrap" id="chartWrap"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Paid Bills</h2>
+            <p id="tableRangeLabel">Detailed list of settled bills</p>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Bill</th>
+                <th>Table</th>
+                <th>Items</th>
+                <th>Subtotal</th>
+                <th>Discount</th>
+                <th>Grand Total</th>
+                <th>Paid At</th>
+              </tr>
+            </thead>
+            <tbody id="billsTableBody"></tbody>
+          </table>
+          <div class="table-empty" id="tableEmpty" style="display:none;">
+            <span class="material-symbols-outlined">inbox</span>
+            No paid bills in this date range.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const REPORT_DATA_URL = '{% url "billing:report_data" %}';
+  let currentRange = '7d';
+  let currentBills = [];
+
+  function money(n){
+    n = Number(n) || 0;
+    return 'Rs. ' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+  }
+  function escapeHtml(str){
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  /* ---------------- sidebar toggle ---------------- */
+  const sidebar = document.getElementById('sidebar');
+  const sidebarOverlay = document.getElementById('sidebarOverlay');
+  document.getElementById('hamburgerBtn').addEventListener('click', function(){
+    sidebar.classList.add('open'); sidebarOverlay.classList.add('open');
+  });
+  sidebarOverlay.addEventListener('click', function(){
+    sidebar.classList.remove('open'); sidebarOverlay.classList.remove('open');
+  });
+
+  function tickClock(){
+    document.getElementById('clockTime').textContent = new Date().toLocaleTimeString('en-US', { hour12:false });
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  /* ---------------- range tabs ---------------- */
+  document.querySelectorAll('.range-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.range-btn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      currentRange = btn.dataset.range;
+      document.getElementById('startDate').value = '';
+      document.getElementById('endDate').value = '';
+      loadReport({ range: currentRange });
+    });
+  });
+
+  document.getElementById('applyRangeBtn').addEventListener('click', function(){
+    const start = document.getElementById('startDate').value;
+    const end = document.getElementById('endDate').value;
+    if (!start || !end){ return; }
+    document.querySelectorAll('.range-btn').forEach(function(b){ b.classList.remove('active'); });
+    loadReport({ start: start, end: end });
+  });
+
+  /* ---------------- chart ---------------- */
+  function renderChart(series){
+    const wrap = document.getElementById('chartWrap');
+    if (!series || !series.length){
+      wrap.innerHTML = '<div class="chart-empty"><span class="material-symbols-outlined">bar_chart</span><span>No revenue data for this range.</span></div>';
+      return;
+    }
+    const max = Math.max.apply(null, series.map(function(p){ return p[1]; })) || 1;
+    wrap.innerHTML = series.map(function(point){
+      const pct = Math.max((point[1] / max) * 100, 2);
+      const label = new Date(point[0] + 'T00:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' });
+      return (
+        '<div class="chart-bar-col">' +
+          '<span class="chart-bar-value">' + money(point[1]) + '</span>' +
+          '<div class="chart-bar" style="height:' + pct + '%" title="' + label + ': ' + money(point[1]) + '"></div>' +
+          '<span class="chart-bar-label">' + label + '</span>' +
+        '</div>'
+      );
+    }).join('');
+  }
+
+  /* ---------------- table ---------------- */
+  function renderTable(bills){
+    const body = document.getElementById('billsTableBody');
+    const empty = document.getElementById('tableEmpty');
+    if (!bills.length){
+      body.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+    body.innerHTML = bills.map(function(b){
+      return (
+        '<tr>' +
+          '<td>#' + b.bill_id + '</td>' +
+          '<td>Table ' + escapeHtml(b.table_number) + '</td>' +
+          '<td class="cell-muted">' + b.item_count + ' items</td>' +
+          '<td class="cell-muted">' + money(b.subtotal) + '</td>' +
+          '<td class="cell-muted">' + money(b.discount) + '</td>' +
+          '<td class="cell-total">' + money(b.grand_total) + '</td>' +
+          '<td class="cell-muted">' + escapeHtml(b.paid_at || '') + '</td>' +
+        '</tr>'
+      );
+    }).join('');
+  }
+
+  /* ---------------- load ---------------- */
+  function loadReport(params){
+    const url = new URL(REPORT_DATA_URL, window.location.origin);
+    Object.keys(params).forEach(function(k){ url.searchParams.set(k, params[k]); });
+
+    fetch(url.toString())
+      .then(function(res){ return res.json(); })
+      .then(function(d){
+        currentBills = d.bills || [];
+
+        document.getElementById('statRevenue').textContent = money(d.total_revenue);
+        document.getElementById('statBills').textContent = d.total_bills;
+        document.getElementById('statAvg').textContent = money(d.avg_bill);
+        document.getElementById('statTax').textContent = money(d.total_tax);
+
+        const rangeLabel = (d.start && d.end)
+          ? (d.start === d.end ? d.start : d.start + ' → ' + d.end)
+          : 'All time';
+        document.getElementById('chartRangeLabel').textContent = 'Revenue collected · ' + rangeLabel;
+        document.getElementById('tableRangeLabel').textContent = d.total_bills + ' bill(s) · ' + rangeLabel;
+
+        renderChart(d.daily_series);
+        renderTable(currentBills);
+      })
+      .catch(function(){ /* keep last known state on failure */ });
+  }
+
+  /* ---------------- CSV export ---------------- */
+  document.getElementById('exportBtn').addEventListener('click', function(){
+    if (!currentBills.length){ return; }
+    const header = ['Bill', 'Table', 'Items', 'Subtotal', 'Discount', 'Grand Total', 'Paid At'];
+    const rows = currentBills.map(function(b){
+      return [b.bill_id, b.table_number, b.item_count, b.subtotal, b.discount, b.grand_total, b.paid_at || ''];
+    });
+    const csv = [header].concat(rows).map(function(row){
+      return row.map(function(cell){
+        const val = String(cell).replace(/"/g, '""');
+        return /[",\n]/.test(val) ? '"' + val + '"' : val;
+      }).join(',');
+    }).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'sales-report-' + currentRange + '-' + new Date().toISOString().slice(0,10) + '.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  });
+
+  /* ---------------- init ---------------- */
+  loadReport({ range: currentRange });
+
+})();
+</script>
+</body>
+</html>

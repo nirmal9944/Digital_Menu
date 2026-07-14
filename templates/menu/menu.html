@@ -731,6 +731,24 @@ ul{ margin:0; padding:0; list-style:none; }
 
 .food-bottom{ display:flex; align-items:flex-end; justify-content:space-between; gap:8px; margin-top:auto; }
 .food-price{ font-size:var(--text-lg); font-weight:800; color:var(--color-orange); }
+.food-price-row{ display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; }
+.food-price-original{ font-size:var(--text-sm); font-weight:600; color:var(--color-muted); text-decoration:line-through; }
+
+.offer-badge{
+  position:absolute;
+  top:8px; right:8px;
+  display:flex;
+  align-items:center;
+  gap:4px;
+  background:var(--color-green);
+  color:#fff;
+  font-size:.62rem;
+  font-weight:700;
+  padding:4px 8px;
+  border-radius:var(--radius-full);
+  box-shadow:var(--shadow-sm);
+  white-space:nowrap;
+}
 
 .food-actions{ display:flex; flex-direction:column; align-items:stretch; gap:6px; }
 .btn-add, .btn-view{
@@ -791,6 +809,77 @@ ul{ margin:0; padding:0; list-style:none; }
   white-space:nowrap;
 }
 .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* =========================================================
+   QUICK ORDER FAB  (water, tissue, pickle, cold drink...)
+   ========================================================= */
+.quick-fab{
+  position:fixed;
+  right:16px;
+  bottom:90px;
+  width:56px; height:56px;
+  border-radius:50%;
+  background:var(--color-orange);
+  color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.35rem;
+  box-shadow:0 10px 24px rgba(239,111,31,.42);
+  z-index:150;
+  border:none; cursor:pointer;
+  transition:transform .25s var(--ease), box-shadow .2s var(--ease);
+}
+.quick-fab:active{ transform:scale(.92); }
+.quick-fab.open{ transform:rotate(45deg); }
+.quick-fab-badge{
+  position:absolute; top:-3px; right:-3px;
+  background:var(--color-green);
+  color:#fff;
+  font-size:.62rem; font-weight:700;
+  min-width:18px; height:18px; padding:0 4px;
+  border-radius:var(--radius-full);
+  display:flex; align-items:center; justify-content:center;
+  border:2px solid #fff;
+}
+
+.quick-panel-overlay{
+  position:fixed; inset:0; background:rgba(20,16,14,.45);
+  z-index:170; opacity:0; visibility:hidden;
+  transition:opacity .25s ease, visibility .25s ease;
+  display:flex; align-items:flex-end; justify-content:center;
+}
+.quick-panel-overlay.open{ opacity:1; visibility:visible; }
+.quick-panel{
+  width:100%; max-width:480px; background:#fff;
+  border-radius:22px 22px 0 0;
+  padding:20px 20px calc(env(safe-area-inset-bottom,0px) + 20px);
+  max-height:74vh; overflow-y:auto;
+  transform:translateY(30px);
+  transition:transform .3s cubic-bezier(.32,.72,0,1);
+}
+.quick-panel-overlay.open .quick-panel{ transform:translateY(0); }
+.quick-panel-handle{ width:38px; height:4px; background:#eee; border-radius:4px; margin:0 auto 14px; }
+.quick-panel-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:2px; }
+.quick-panel-head h3{ font-size:1.08rem; font-weight:800; margin:0; }
+.quick-panel-sub{ font-size:.8rem; color:var(--color-muted); margin:3px 0 16px; }
+.quick-panel-close{ width:32px;height:32px;border-radius:50%;border:1px solid #F0EAE1;background:#fff;display:flex;align-items:center;justify-content:center;color:var(--color-muted); flex-shrink:0; cursor:pointer; }
+
+.quick-item-list{ display:flex; flex-direction:column; gap:10px; }
+.quick-item-row{ display:flex; align-items:center; gap:12px; padding:11px 12px; border:1px solid #F0EAE1; border-radius:14px; }
+.quick-item-icon{ width:42px;height:42px;border-radius:12px;background:var(--color-orange-pale);color:var(--color-orange);display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0; }
+.quick-item-info{ flex:1; min-width:0; }
+.quick-item-name{ font-weight:600; font-size:.9rem; color:var(--color-text); }
+.quick-item-tag{ font-size:.72rem; font-weight:700; margin-top:2px; }
+.quick-item-tag.free{ color:var(--color-green); }
+.quick-item-tag.paid{ color:var(--color-orange); }
+.quick-item-btn{ flex-shrink:0; padding:9px 16px; border-radius:var(--radius-full); border:none; background:var(--color-orange); color:#fff; font-size:.78rem; font-weight:700; cursor:pointer; transition:background .2s ease, transform .15s ease; }
+.quick-item-btn:active{ transform:scale(.93); }
+.quick-item-btn.added{ background:var(--color-green); }
+.quick-item-btn:disabled{ opacity:.7; cursor:default; }
+.quick-empty{ text-align:center; color:var(--color-muted); font-size:.85rem; padding:24px 0; }
+
+@media (min-width:768px){
+  .quick-fab{ bottom:28px; }
+}
 .toast i{ color:var(--color-orange-light); }
 
 /* =========================================================
@@ -1200,11 +1289,12 @@ ul{ margin:0; padding:0; list-style:none; }
 
         <div class="food-grid" id="foodList">
           {% for food in foods %}
+          {% with offer=food.active_offer %}
           <article class="food-card"
                     data-id="{{ food.id }}"
                     data-category="{{ food.category.id }}"
                     data-name="{{ food.food_name }}"
-                    data-price="{{ food.price }}"
+                    data-price="{{ food.effective_price }}"
                     data-duration="{{ food.preparation_time }} min"
                     data-desc="{{ food.description }}">
 
@@ -1216,6 +1306,12 @@ ul{ margin:0; padding:0; list-style:none; }
               {% endif %}
               {% if food.is_popular %}
               <span class="food-badge"><i class="fa-solid fa-star" aria-hidden="true"></i> Bestseller</span>
+              {% endif %}
+              {% if offer %}
+              <span class="offer-badge">
+                <i class="fa-solid fa-tag" aria-hidden="true"></i>
+                {% if offer.discount_type == 'percent' %}{{ offer.value|floatformat:"-2" }}% OFF{% else %}Rs. {{ offer.value|floatformat:"-2" }} OFF{% endif %}
+              </span>
               {% endif %}
             </div>
 
@@ -1234,7 +1330,14 @@ ul{ margin:0; padding:0; list-style:none; }
               <p class="food-desc">{{ food.description }}</p>
 
               <div class="food-bottom">
+                {% if offer %}
+                <div class="food-price-row">
+                  <span class="food-price-original">Rs. {{ food.price }}</span>
+                  <span class="food-price">Rs. {{ food.effective_price }}</span>
+                </div>
+                {% else %}
                 <span class="food-price">Rs. {{ food.price }}</span>
+                {% endif %}
                 <div class="food-actions">
                   <button type="button" class="btn-add ripple" data-ripple="light">
                     <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i> Add
@@ -1246,6 +1349,7 @@ ul{ margin:0; padding:0; list-style:none; }
               </div>
             </div>
           </article>
+          {% endwith %}
           {% empty %}
           <div class="empty-state show">
             <i class="fa-solid fa-utensils" aria-hidden="true"></i>

@@ -187,6 +187,12 @@
   /* Completed time filter - shown only when completed tab is active */
   #completedFilterWrap{display:none;}
 
+  /* Quick-request search - shown only when quick tab is active */
+  #quickFilterWrap{display:none;position:relative;}
+  #quickFilterWrap .material-symbols-outlined.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:17px;color:var(--text-3);pointer-events:none;}
+  #quickSearchInput{appearance:none;border:1px solid var(--border);background:#fff;padding:8px 14px 8px 32px;border-radius:24px;font-size:12.5px;font-family:'Poppins',sans-serif;color:var(--text-1);min-width:200px;transition:var(--transition);}
+  #quickSearchInput:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(255,87,34,.15);}
+
   /* ===== BOARD ===== */
   .board{flex:1;min-height:0;display:grid;grid-template-columns:repeat(4,1fr);gap:18px;padding:20px 32px 24px;overflow:hidden;}
   .board.board--single{grid-template-columns:minmax(0,680px);justify-content:flex-start;}
@@ -221,6 +227,16 @@
   .completed-table .order-id-cell{font-weight:600;color:var(--text-1);}
   .completed-table .items-cell{font-size:12px;color:var(--text-2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
   .completed-table .total-cell{font-weight:600;color:var(--brand);}
+
+  /* ===== QUICK REQUEST TAGS ===== */
+  .quick-tag{display:inline-block;padding:2px 12px;border-radius:20px;font-size:10.5px;font-weight:700;}
+  .quick-tag.free{background:var(--c-ready-bg);color:var(--c-ready);}
+  .quick-tag.paid{background:var(--brand-bg);color:var(--brand-dark);}
+  .quick-status-pill{display:inline-block;padding:3px 12px;border-radius:20px;font-size:10.5px;font-weight:700;}
+  .quick-status-pill.pending{background:var(--c-preparing-bg);color:#B45309;}
+  .quick-status-pill.served{background:var(--c-completed-bg);color:var(--c-completed);}
+  .quick-item-cell{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--text-1);}
+  .quick-item-cell .material-symbols-outlined{font-size:17px;color:var(--brand);}
 
   /* ===== CARD ===== */
   .order-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow-sm);transition:var(--transition);animation:cardIn .3s ease;}
@@ -424,6 +440,8 @@
           <button class="nav-item" data-filter="all"><span class="material-symbols-outlined">all_inclusive</span><span class="nav-label">All Time</span></button>
         </div>
       </div>
+
+      <button class="nav-item" id="navQuick"><span class="material-symbols-outlined">notifications_active</span><span class="nav-label">Quick Requests</span><span class="nav-badge" id="navQuickBadge">0</span></button>
     </nav>
 
     <div class="sidebar-spacer"></div>
@@ -501,6 +519,7 @@
         <button class="tab-btn" data-tab="preparing">Preparing <span class="tab-count" id="tabPreparingCount">0</span></button>
         <button class="tab-btn" data-tab="ready">Ready <span class="tab-count" id="tabReadyCount">0</span></button>
         <button class="tab-btn" data-tab="delivered">Completed <span class="tab-count" id="tabDeliveredCount">0</span></button>
+        <button class="tab-btn" data-tab="quick">Quick Requests <span class="tab-count" id="tabQuickCount">0</span></button>
       </div>
       <div class="filters">
         <div class="select-wrap">
@@ -526,6 +545,11 @@
             <option value="all">All Time</option>
           </select>
           <span class="material-symbols-outlined sel-chev">expand_more</span>
+        </div>
+        <!-- Quick-request search (shown only when Quick Requests tab is active) -->
+        <div class="select-wrap" id="quickFilterWrap">
+          <span class="material-symbols-outlined search-icon">search</span>
+          <input type="text" id="quickSearchInput" placeholder="Search item…">
         </div>
       </div>
     </div>
@@ -563,6 +587,14 @@
         </div>
         <div class="col-body" id="body-delivered"></div>
       </div>
+      <!-- Quick Requests Column -->
+      <div class="column" data-status="quick" hidden>
+        <div class="col-header">
+          <div class="col-icon"><span class="material-symbols-outlined">notifications_active</span></div>
+          <div class="col-title">Quick Requests (<span id="count-quick">0</span>)</div>
+        </div>
+        <div class="col-body" id="body-quick"></div>
+      </div>
     </section>
 
     <div class="realtime-footer">
@@ -582,6 +614,7 @@
 
 <!-- ========== INITIAL TICKET DATA ========== -->
 {{ tickets|json_script:"initial-tickets-data" }}
+{{ quick_requests|json_script:"initial-quick-data" }}
 
 <!-- ========== CSRF + URL CONFIG ========== -->
 <script>
@@ -594,6 +627,7 @@ const URLS = {
   priority:    '{% url "kitchen:priority" ticket_id=999999 %}',
   acknowledge: '{% url "kitchen:acknowledge" ticket_id=999999 %}',
   note:        '{% url "kitchen:note" ticket_id=999999 %}',
+  serveQuick:  '{% url "kitchen:serve_quick" request_id=999999 %}',
 };
 
 function buildUrl(template, id){
@@ -607,6 +641,8 @@ function buildUrl(template, id){
 
 /* -------- STATE -------- */
 let tickets    = [];
+let quickRequests = [];
+let quickSearchQuery = '';
 let activeTab  = 'all';
 let tableFilter = 'all';
 let sortOrder  = 'oldest';
@@ -614,7 +650,6 @@ let completedTimeFilter = '1day';
 let soundOn    = true;
 let notifications = [];
 let timeUpdateInterval = null;
-let isFirstRender = true;
 const STATUSES = ['new','preparing','ready','delivered'];
 const STATUS_LABEL = { new:'NEW', preparing:'PREPARING', ready:'READY', delivered:'COMPLETED' };
 
@@ -661,26 +696,6 @@ function timeAgo(isoStr){
     return years + ' year' + (years > 1 ? 's' : '') + ' ago';
   } catch(e) {
     return '';
-  }
-}
-
-/* -------- DEBUG FUNCTION (REMOVE IN PRODUCTION) -------- */
-function debugTimestamp(isoStr, label) {
-  if(!isoStr) return;
-  try {
-    const now = Date.now();
-    const then = new Date(isoStr).getTime();
-    const diff = Math.floor((now - then) / 1000);
-    console.log(`[${label || 'DEBUG'}] Timestamp:`, isoStr);
-    console.log(`[${label || 'DEBUG'}] Now (browser):`, new Date(now).toISOString());
-    console.log(`[${label || 'DEBUG'}] Then (order):`, new Date(then).toISOString());
-    console.log(`[${label || 'DEBUG'}] Diff (seconds):`, diff);
-    console.log(`[${label || 'DEBUG'}] Diff (minutes):`, Math.floor(diff/60));
-    console.log(`[${label || 'DEBUG'}] Diff (hours):`, Math.floor(diff/3600));
-    console.log(`[${label || 'DEBUG'}] Display:`, timeAgo(isoStr));
-    console.log('---');
-  } catch(e) {
-    console.log('Debug error:', e);
   }
 }
 
@@ -950,6 +965,70 @@ function renderCompletedTable(){
   `;
 }
 
+/* -------- QUICK REQUESTS RENDER -------- */
+function renderQuickRequests(){
+  const body = document.getElementById('body-quick');
+  if(!body) return;
+
+  let list = quickRequests.slice();
+
+  if(quickSearchQuery){
+    list = list.filter(q => q.item_name.toLowerCase().includes(quickSearchQuery));
+  }
+  if(tableFilter !== 'all'){
+    list = list.filter(q => ('Table ' + q.table_number) === tableFilter);
+  }
+  // Pending first (oldest first so staff serve in order), then served (newest first)
+  list.sort((a,b) => {
+    if(a.status !== b.status) return a.status === 'pending' ? -1 : 1;
+    const da = new Date(a.requested_at_full), db = new Date(b.requested_at_full);
+    return a.status === 'pending' ? da - db : db - da;
+  });
+
+  document.getElementById('count-quick').textContent = list.filter(q => q.status === 'pending').length;
+
+  if(!list.length){
+    const msg = quickSearchQuery ? `No quick requests match "${esc(quickSearchQuery)}"` : 'No quick requests yet';
+    body.innerHTML = `<div class="empty-col"><span class="material-symbols-outlined">notifications_active</span><span>${msg}</span></div>`;
+    return;
+  }
+
+  body.innerHTML = `
+    <div class="completed-table-wrap">
+      <div class="completed-table-scroll">
+        <table class="completed-table">
+          <thead>
+            <tr>
+              <th>Table</th>
+              <th>Item</th>
+              <th>Qty</th>
+              <th>Type</th>
+              <th>Requested</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(q => `
+              <tr>
+                <td>Table ${esc(q.table_number)}</td>
+                <td><span class="quick-item-cell"><span class="material-symbols-outlined">room_service</span>${esc(q.item_name)}</span></td>
+                <td>${q.quantity}</td>
+                <td>${q.is_free ? '<span class="quick-tag free">Free</span>' : `<span class="quick-tag paid">Rs. ${q.unit_price}</span>`}</td>
+                <td><span class="time-ago-cell">${timeAgo(q.requested_at_full)}</span></td>
+                <td><span class="quick-status-pill ${q.status}">${q.status === 'served' ? 'Served' : 'Pending'}</span></td>
+                <td>${q.status === 'pending'
+                  ? `<button class="btn btn-accept" style="padding:7px 14px;font-size:11.5px;flex:none;" onclick="KDS.serveQuick(${q.id})"><span class="material-symbols-outlined" style="font-size:15px;">check</span>Mark Served</button>`
+                  : '—'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
 /* -------- CARD TEMPLATE -------- */
 function timerBarHtml(ticket){
   if(ticket.status === 'delivered' || ticket.remaining_seconds <= 0) return '';
@@ -1067,12 +1146,16 @@ function render(){
   document.getElementById('navReadyBadge').textContent     = counts.ready;
   document.getElementById('navCompletedBadge').textContent = counts.delivered;
 
+  const pendingQuick = quickRequests.filter(q => q.status === 'pending').length;
+  document.getElementById('navQuickBadge').textContent = pendingQuick;
+
   // Tab counts
   document.getElementById('tabAllCount').textContent       = tickets.length;
   document.getElementById('tabNewCount').textContent       = counts.new;
   document.getElementById('tabPreparingCount').textContent = counts.preparing;
   document.getElementById('tabReadyCount').textContent     = counts.ready;
   document.getElementById('tabDeliveredCount').textContent = counts.delivered;
+  document.getElementById('tabQuickCount').textContent     = pendingQuick;
 
   // Bell badge
   const bb = document.getElementById('bellBadge');
@@ -1082,7 +1165,16 @@ function render(){
   // Board
   const board = document.getElementById('board');
   const isCompletedView = activeTab === 'delivered' || activeTab === 'completed';
-  
+
+  if(activeTab === 'quick'){
+    board.className = 'board board--completed-view';
+    document.querySelectorAll('.column').forEach(col => {
+      col.hidden = col.dataset.status !== 'quick';
+    });
+    renderQuickRequests();
+    return;
+  }
+
   if(isCompletedView){
     board.className = 'board board--completed-view';
     // Hide all columns except delivered
@@ -1092,7 +1184,7 @@ function render(){
     renderCompletedTable();
     return;
   }
-  
+
   board.className = activeTab !== 'all' ? 'board board--single' : 'board';
   
   STATUSES.forEach(status => {
@@ -1112,15 +1204,6 @@ function render(){
     const body = document.getElementById('body-'+status);
     body.innerHTML = list.length ? list.map(cardHtml).join('') : emptyHtml(status);
   });
-  
-  // Debug: Log the first order's timestamp if it exists
-  if (isFirstRender && tickets.length > 0) {
-    console.log('===== ORDER TIMESTAMP DEBUG =====');
-    tickets.forEach((t, index) => {
-      debugTimestamp(t.received_at_full, `Order ${index + 1} (${t.order_number})`);
-    });
-    isFirstRender = false;
-  }
 }
 
 function renderNotifications(){
@@ -1139,6 +1222,8 @@ function renderNotifications(){
 /* -------- POLLING -------- */
 let prevNewIds = new Set();
 
+let prevPendingQuickIds = new Set();
+
 function poll(){
   fetch(URLS.poll)
     .then(r => r.json())
@@ -1150,14 +1235,23 @@ function poll(){
           const t = data.tickets.find(x=>x.ticket_id===id);
           if(t) {
             addNotif(`New order ${t.order_number} arrived at Table ${t.table_number}`);
-            // Debug new order timestamp
-            console.log('🆕 NEW ORDER ARRIVED!');
-            debugTimestamp(t.received_at_full, `NEW ORDER ${t.order_number}`);
           }
         }
       });
       prevNewIds = newIds;
       tickets = data.tickets;
+
+      quickRequests = data.quick_requests || [];
+      const pendingQuickIds = new Set(quickRequests.filter(q=>q.status==='pending').map(q=>q.id));
+      pendingQuickIds.forEach(id => {
+        if(!prevPendingQuickIds.has(id)){
+          playBeep(520);
+          const q = quickRequests.find(x=>x.id===id);
+          if(q) addNotif(`Table ${q.table_number} requested ${q.item_name}`);
+        }
+      });
+      prevPendingQuickIds = pendingQuickIds;
+
       buildTableFilter();
       render();
       document.getElementById('lastUpdated').textContent = 'Last updated: ' + data.server_time;
@@ -1222,6 +1316,19 @@ function saveKitchenNote(ticketId){
     .then(r=>r.json())
     .then(data=>{ if(data.ok) showToast('Note saved'); })
     .catch(()=>{});
+}
+
+function serveQuick(requestId){
+  csrfPost(buildUrl(URLS.serveQuick, requestId), {})
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.ok){
+        showToast('Marked as served');
+        playBeep(660);
+        poll();
+      }
+    })
+    .catch(()=> showToast('Network error', 'error'));
 }
 
 /* -------- MODAL -------- */
@@ -1302,9 +1409,13 @@ function setActiveTab(tab){
   } else {
     filterWrap.style.display = 'none';
   }
-  
+
+  // Show/hide quick-request search in top bar
+  const quickFilterWrap = document.getElementById('quickFilterWrap');
+  quickFilterWrap.style.display = (tab === 'quick') ? 'block' : 'none';
+
   // Update sidebar nav
-  const navMap = { all:'navAll', new:'navNew', preparing:'navPreparing', ready:'navReady', delivered:'navCompleted', completed:'navCompleted' };
+  const navMap = { all:'navAll', new:'navNew', preparing:'navPreparing', ready:'navReady', delivered:'navCompleted', completed:'navCompleted', quick:'navQuick' };
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const navEl = document.getElementById(navMap[tab]);
   if(navEl) navEl.classList.add('active');
@@ -1344,6 +1455,11 @@ function init(){
   const seedEl = document.getElementById('initial-tickets-data');
   tickets = seedEl ? JSON.parse(seedEl.textContent) : [];
   prevNewIds = new Set(tickets.filter(t=>t.status==='new').map(t=>t.ticket_id));
+
+  const quickSeedEl = document.getElementById('initial-quick-data');
+  quickRequests = quickSeedEl ? JSON.parse(quickSeedEl.textContent) : [];
+  prevPendingQuickIds = new Set(quickRequests.filter(q=>q.status==='pending').map(q=>q.id));
+
   buildTableFilter();
   render();
   renderNotifications();
@@ -1366,7 +1482,14 @@ function init(){
   document.getElementById('navPreparing').addEventListener('click', ()=>{ setActiveTab('preparing'); toggleSidebar(false); });
   document.getElementById('navReady').addEventListener('click',     ()=>{ setActiveTab('ready');     toggleSidebar(false); });
   document.getElementById('navCompleted').addEventListener('click', ()=>{ setActiveTab('delivered'); toggleSidebar(false); });
-  
+  document.getElementById('navQuick').addEventListener('click',     ()=>{ setActiveTab('quick');     toggleSidebar(false); });
+
+  // Quick-request search
+  document.getElementById('quickSearchInput').addEventListener('input', function(e){
+    quickSearchQuery = e.target.value.trim().toLowerCase();
+    if(activeTab === 'quick') render();
+  });
+
   // Completed subnav filters
   document.querySelectorAll('#completedSubnav .nav-item').forEach(item => {
     item.addEventListener('click', function(e) {
@@ -1458,14 +1581,15 @@ function toggleSidebar(forceState){
 document.addEventListener('DOMContentLoaded', init);
 
 // Expose for inline onclick
-window.KDS = { 
-  setOrderStatus, 
-  cycleItemStatus, 
-  acknowledgeTicket, 
-  setPriority, 
-  saveKitchenNote, 
-  openModal, 
-  closeModal 
+window.KDS = {
+  setOrderStatus,
+  cycleItemStatus,
+  acknowledgeTicket,
+  setPriority,
+  saveKitchenNote,
+  serveQuick,
+  openModal,
+  closeModal
 };
 })();
 </script>

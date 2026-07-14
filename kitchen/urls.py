@@ -18,4 +18,7 @@ urlpatterns = [
     path('ticket/<int:ticket_id>/priority/', views.set_priority,       name='priority'),
     path('ticket/<int:ticket_id>/acknowledge/', views.acknowledge_ticket, name='acknowledge'),
     path('ticket/<int:ticket_id>/note/',     views.save_kitchen_note,  name='note'),
+
+    # Quick requests (water, tissue, pickle, cold drink...)
+    path('quick/<int:request_id>/serve/', views.serve_quick_request, name='serve_quick'),
 ]

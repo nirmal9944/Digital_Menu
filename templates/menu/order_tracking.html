@@ -292,6 +292,7 @@
      8. STATE — EMPTY
   ========================================================= */
   .state-empty{ display:flex; flex-direction:column; align-items:center; text-align:center; padding-top:var(--space-sm); }
+  .state-empty[hidden]{ display:none; }
 
   .empty-illustration{ position:relative; width:clamp(200px, 170px + 14vw, 280px); height:clamp(190px, 160px + 12vw, 250px); display:flex; align-items:center; justify-content:center; margin-bottom:8px; }
   .empty-illustration .blob{ position:absolute; inset:6%; background:radial-gradient(circle at 35% 30%, var(--color-primary-light), #FDF6F0 70%); border-radius:46% 54% 58% 42% / 50% 44% 56% 50%; z-index:0; }
@@ -378,8 +379,14 @@
 
   .msg-card{ display:flex; align-items:center; gap:12px; border-radius:var(--radius-md); padding:15px 16px; }
   .msg-card.tone-green{ background:var(--color-green-light); border:1px solid var(--color-green-border); }
+  .msg-card.tone-orange{ background:var(--color-primary-light); border:1px solid var(--color-primary-border); }
   .msg-icon{ width:38px; height:38px; border-radius:50%; background:var(--color-green); color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; animation:bellRing 2.6s ease-in-out infinite; }
+  .msg-icon.tone-orange{ background:var(--color-primary); animation:pulseStep 1.7s ease-in-out infinite; }
   .msg-text{ font-size:var(--text-sm); font-weight:600; color:var(--color-green-dark); line-height:1.45; }
+  .msg-card.tone-orange .msg-text{ color:var(--color-primary-darker); }
+  .bill-sub{ font-size:var(--text-xs); font-weight:500; color:var(--color-text-secondary); margin-top:3px; }
+  .msg-card.tone-orange .bill-sub{ color:var(--color-primary-dark); }
+  .anim-in.d6{ animation-delay:.36s; }
 
   /* =========================================================
      10. STATE — COMPLETED
@@ -590,7 +597,7 @@
     <div class="container">
 
       <!-- ===================== STATE 1 — EMPTY ===================== -->
-      <section class="state-empty anim-in" id="stateEmpty" >
+      <section class="state-empty anim-in" id="stateEmpty" {% if tracking.state != 'empty' %}hidden{% endif %}>
 
         <div class="empty-illustration">
           <div class="blob"></div>
@@ -620,12 +627,12 @@
       </section>
 
       <!-- ===================== TRACKING GRID (active / completed + receipt sidebar) ===================== -->
-      <div class="tracking-grid" id="trackingGrid" hidden>
+      <div class="tracking-grid" id="trackingGrid" {% if tracking.state == 'empty' %}hidden{% endif %}>
 
         <div class="tracking-main">
 
           <!-- ===================== STATE 2 — ACTIVE ===================== -->
-          <section class="gap-16" id="stateActive" hidden>
+          <section class="gap-16" id="stateActive" {% if tracking.state != 'active' %}hidden{% endif %}>
 
             <div class="card order-info-card anim-in">
               <div class="order-info-icon tone-orange"><i class="fa-solid fa-receipt"></i></div>
@@ -666,7 +673,14 @@
               <p class="msg-text" id="activeMsg" aria-live="polite">We'll notify you when your food is ready!</p>
             </div>
 
-            <div class="anim-in d5">
+            <div class="card anim-in d5">
+              <div class="section-row">
+                <h2>Your Bill</h2>
+              </div>
+              <div class="js-bill-status"></div>
+            </div>
+
+            <div class="anim-in d6">
               <a class="btn btn-outline" href="{% url 'menu' table_number=table_number %}">
                 <i class="fa-solid fa-circle-plus"></i> Add More Items
               </a>
@@ -674,7 +688,7 @@
           </section>
 
           <!-- ===================== STATE 3 — COMPLETED ===================== -->
-          <section class="gap-16" id="stateCompleted" hidden>
+          <section class="gap-16" id="stateCompleted" {% if tracking.state != 'completed' %}hidden{% endif %}>
 
             <div class="card order-info-card anim-in">
               <div class="order-info-icon tone-green"><i class="fa-solid fa-clipboard-list"></i></div>
@@ -706,6 +720,13 @@
                 <button class="link-action view-receipt" id="viewReceiptBtnDone">View Receipt</button>
               </div>
               <div id="doneItems"></div>
+            </div>
+
+            <div class="card anim-in d5">
+              <div class="section-row">
+                <h2>Your Bill</h2>
+              </div>
+              <div class="js-bill-status"></div>
             </div>
           </section>
 
@@ -790,6 +811,8 @@ const langManager = new LanguageManager();
   "use strict";
 
   var API_URL = "{% url 'order_status_api' table_number=table_number %}";
+  var REQUEST_BILL_URL = "{% url 'request_bill' table_number=table_number %}";
+  var CSRF_TOKEN = "{{ csrf_token }}";
   var POLL_INTERVAL_MS = 6000;
 
   var STEP_LABELS = ["Order<br>Received", "Preparing", "Ready", "Delivered"];
@@ -889,6 +912,70 @@ const langManager = new LanguageManager();
     }).join("");
   }
 
+  function buildBillStatusHTML(data){
+    if (data.payment_status === "paid"){
+      return (
+        '<div class="msg-card tone-green">' +
+          '<div class="msg-icon"><i class="fa-solid fa-circle-check"></i></div>' +
+          '<div>' +
+            '<p class="msg-text">Bill paid &mdash; thank you for dining with us!</p>' +
+            '<p class="bill-sub">Total paid ' + money(data.grand_total) + '</p>' +
+          '</div>' +
+        '</div>'
+      );
+    }
+    if (data.bill_requested){
+      return (
+        '<div class="msg-card tone-orange">' +
+          '<div class="msg-icon tone-orange"><i class="fa-solid fa-hourglass-half"></i></div>' +
+          '<div>' +
+            '<p class="msg-text">Bill requested &mdash; our staff will be with you shortly.</p>' +
+            '<p class="bill-sub">Amount due ' + money(data.grand_total) + '</p>' +
+          '</div>' +
+        '</div>'
+      );
+    }
+    return (
+      '<button class="btn btn-primary js-request-bill-btn" type="button">' +
+        '<i class="fa-solid fa-receipt"></i> Request Bill' +
+      '</button>'
+    );
+  }
+
+  function requestBill(){
+    var buttons = document.querySelectorAll(".js-request-bill-btn");
+    if (!buttons.length) return;
+
+    buttons.forEach(function(btn){
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Requesting&hellip;';
+    });
+
+    fetch(REQUEST_BILL_URL, {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": CSRF_TOKEN,
+        "X-Requested-With": "XMLHttpRequest",
+      },
+    })
+      .then(function(res){
+        return res.json().then(function(data){ return { ok: res.ok, data: data }; });
+      })
+      .then(function(result){
+        if (result.ok && result.data && result.data.success){
+          showToast("Bill requested! Our staff will be with you shortly.");
+          fetchStatus();
+        } else {
+          showToast((result.data && result.data.error) || "Could not request the bill.");
+          render(currentData);
+        }
+      })
+      .catch(function(){
+        showToast("Network error — please try again.");
+        render(currentData);
+      });
+  }
+
   function buildStepperHTML(currentStep, forceComplete){
     var fillPct = forceComplete ? 100 : (currentStep / (STEP_LABELS.length - 1)) * 100;
     var html = '<div class="stepper-track"><div class="stepper-track-fill' +
@@ -951,6 +1038,7 @@ const langManager = new LanguageManager();
   --------------------------------------------------------- */
   function render(data){
     var prevState = currentData ? currentData.state : null;
+    var prevPaymentStatus = currentData ? currentData.payment_status : null;
     currentData = data;
 
     stateEmpty.hidden = data.state !== "empty";
@@ -993,10 +1081,15 @@ const langManager = new LanguageManager();
       document.querySelectorAll(".js-discount").forEach(function(el){ el.textContent = "- " + money(data.discount); });
       document.querySelectorAll(".js-tax").forEach(function(el){ el.textContent = money(data.tax); });
       document.querySelectorAll(".js-total").forEach(function(el){ el.textContent = money(data.grand_total); });
+      document.querySelectorAll(".js-bill-status").forEach(function(el){ el.innerHTML = buildBillStatusHTML(data); });
     }
 
     if (prevState && prevState !== data.state && data.state !== "completed"){
       showToast("Order status updated: " + (data.status_label || data.state));
+    }
+
+    if (prevPaymentStatus !== "paid" && data.payment_status === "paid"){
+      showToast("Payment confirmed — thank you!");
     }
   }
 
@@ -1048,6 +1141,13 @@ const langManager = new LanguageManager();
   });
   document.addEventListener("keydown", function(e){
     if (e.key === "Escape" && receiptOverlay.classList.contains("is-open")) closeReceipt();
+  });
+
+  /* ---------------------------------------------------------
+     REQUEST BILL
+  --------------------------------------------------------- */
+  document.addEventListener("click", function(e){
+    if (e.target.closest(".js-request-bill-btn")) requestBill();
   });
 
   /* ---------------------------------------------------------

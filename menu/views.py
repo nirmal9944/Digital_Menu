@@ -14,6 +14,9 @@ from .models import (
     Category,
     FoodItem,
     Bill,
+    VATSetting,
+    QuickItem,
+    QuickRequest,
 )
 
 
@@ -42,6 +45,8 @@ def menu_page(request, table_number):
 
         'foods': FoodItem.objects.select_related(
             'category'
+        ).prefetch_related(
+            'offers'
         ).filter(
             is_available=True
         ),
@@ -51,7 +56,9 @@ def menu_page(request, table_number):
         ).filter(
             is_available=True,
             is_popular=True
-        )
+        ),
+
+        'quick_items': QuickItem.objects.filter(is_active=True),
     }
 
     return render(request, 'menu/menu.html', context)
@@ -196,12 +203,27 @@ def _build_tracking_data(table_number):
             'subtotal': float(item.subtotal),
         })
 
-    try:
-        bill = session.bill
+    # Quick requests (water, tissue, pickle, cold drink...) — free ones are
+    # just shown for visibility, paid ones also count toward the total so
+    # this matches exactly what billing will charge once the bill is raised.
+    for qr in QuickRequest.objects.filter(session=session).select_related('item').order_by('requested_at'):
+        subtotal += float(qr.subtotal)
+        items.append({
+            'id': f'quick-{qr.id}',
+            'name': qr.item.name + (' (Free)' if qr.is_free else ''),
+            'category': 'Quick Request',
+            'note': '' if qr.status == 'served' else 'On its way',
+            'quantity': qr.quantity,
+            'unit_price': 0.0 if qr.is_free else float(qr.unit_price),
+            'subtotal': float(qr.subtotal),
+        })
+
+    bill = Bill.objects.filter(session=session).first()
+    if bill:
         vat_percent = float(bill.vat_percent)
         discount = float(bill.discount)
-    except Bill.DoesNotExist:
-        vat_percent = 13.0
+    else:
+        vat_percent = float(VATSetting.current_percent())
         discount = 0.0
 
     taxable = max(subtotal - discount, 0)
@@ -224,6 +246,9 @@ def _build_tracking_data(table_number):
         'discount': discount,
         'tax': tax,
         'grand_total': grand_total,
+        'bill_requested': bill is not None,
+        'bill_id': bill.id if bill else None,
+        'payment_status': bill.payment_status if bill else None,
     })
     return data
 
@@ -356,7 +381,7 @@ def place_order(request, table_number):
             order=order,
             food=food,
             quantity=quantity,
-            unit_price=food.price,
+            unit_price=food.effective_price,
             special_instruction=(entry.get('note') or '')[:255],
         )
         created_any = True
@@ -373,4 +398,118 @@ def place_order(request, table_number):
         'order_number': f"ORD-{order.id:04d}",
         'order_id': order.id,
         'session_id': session.id,
+    })
+
+
+# ---------------------------------------------------------------------------
+# REQUEST BILL
+# ---------------------------------------------------------------------------
+#
+# Called from order_tracking.html when the customer taps "Request Bill".
+# Creates (or reuses) the Bill row for the table's active session, with
+# totals computed from every order placed this visit. From here the Bill
+# shows up on the billing staff's dashboard as "Pending" until a cashier
+# marks it Paid.
+
+@require_POST
+def request_bill(request, table_number):
+    table = RestaurantTable.objects.filter(table_number=table_number).first()
+    if not table:
+        return JsonResponse({'success': False, 'error': 'Table not found.'}, status=404)
+
+    session = TableSession.objects.filter(
+        table=table, status='active'
+    ).order_by('-started_at').first()
+
+    if not session or not session.orders.exclude(status='cancelled').exists():
+        return JsonResponse(
+            {'success': False, 'error': 'No active order found for this table.'},
+            status=400,
+        )
+
+    bill = Bill.objects.filter(session=session).first()
+    created = False
+    if not bill:
+        bill = Bill.create_for_session(session)
+        created = True
+    elif bill.payment_status == 'paid':
+        return JsonResponse(
+            {'success': False, 'error': 'This bill has already been paid.'},
+            status=400,
+        )
+    else:
+        bill.recalculate()
+
+    return JsonResponse({
+        'success': True,
+        'bill_id': bill.id,
+        'grand_total': float(bill.grand_total),
+        'created': created,
+    })
+
+
+# ---------------------------------------------------------------------------
+# QUICK ORDER  (water, tissue, pickle, cold drink... requested straight
+# from the round quick-order button on the menu page, no cart involved)
+# ---------------------------------------------------------------------------
+
+@require_POST
+def quick_order(request, table_number):
+    """
+    Expects JSON: {"item_id": 3, "quantity": 1}
+    Creates a QuickRequest against the table's active session (opening one
+    if needed, same as place_order). Free items are just a kitchen ping;
+    priced ones also get folded into that table's bill total.
+    """
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse(
+            {'success': False, 'error': 'Could not read your request.'}, status=400
+        )
+
+    try:
+        item_id = int(payload.get('item_id'))
+        quantity = max(1, int(payload.get('quantity', 1)))
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Invalid request.'}, status=400)
+
+    item = QuickItem.objects.filter(id=item_id, is_active=True).first()
+    if not item:
+        return JsonResponse(
+            {'success': False, 'error': 'This item is no longer available.'}, status=404
+        )
+
+    table = RestaurantTable.objects.filter(table_number=table_number).first()
+    if not table:
+        return JsonResponse({'success': False, 'error': 'Table not found.'}, status=404)
+
+    session = TableSession.objects.filter(
+        table=table, status='active'
+    ).order_by('-started_at').first()
+
+    if not session:
+        session = TableSession.objects.create(table=table, status='active')
+        if table.status != 'occupied':
+            table.status = 'occupied'
+            table.save(update_fields=['status'])
+
+    QuickRequest.objects.create(
+        session=session,
+        item=item,
+        quantity=quantity,
+        is_free=item.is_free,
+        unit_price=item.price if not item.is_free else 0,
+    )
+
+    # If a bill has already been requested for this session, keep its
+    # total in sync right away rather than waiting for the next view.
+    bill = Bill.objects.filter(session=session, payment_status='unpaid').first()
+    if bill:
+        bill.recalculate()
+
+    return JsonResponse({
+        'success': True,
+        'item_name': item.name,
+        'is_free': item.is_free,
     })

@@ -4,7 +4,7 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.db import transaction
 
-from menu.models import Order, OrderItem, RestaurantDetail
+from menu.models import Order, OrderItem, RestaurantDetail, QuickRequest
 from .models import KitchenStaff, KitchenTicket, KitchenTicketItem
 
 
@@ -108,6 +108,7 @@ def _ticket_to_dict(ticket):
         remaining_seconds = int(max_remaining)
 
     items = []
+    completed_times = []
     for ti in ticket_items:
         items.append({
             'id':                  ti.id,
@@ -127,6 +128,14 @@ def _ticket_to_dict(ticket):
                 if ti.completed_at else None
             ),
         })
+        if ti.completed_at:
+            completed_times.append(ti.completed_at)
+
+    # The moment the order was fully delivered — the latest of every
+    # item's completed_at. Only meaningful once the order is delivered.
+    delivered_at_iso = None
+    if order.status == 'delivered' and completed_times:
+        delivered_at_iso = timezone.localtime(max(completed_times)).isoformat()
 
     return {
         'ticket_id':        ticket.id,
@@ -139,7 +148,14 @@ def _ticket_to_dict(ticket):
         'kitchen_note':     ticket.kitchen_note,
         'is_acknowledged':  ticket.is_acknowledged,
         'received_at':      timezone.localtime(ticket.received_at).strftime('%H:%M'),
-        'received_at_full': timezone.localtime(ticket.received_at).strftime('%Y-%m-%d %H:%M:%S'),
+        # ISO 8601 with UTC offset so the browser's Date parser reads the
+        # exact same instant regardless of server/browser timezone —
+        # a naive "YYYY-MM-DD HH:MM:SS" string gets silently reinterpreted
+        # as browser-local time by `new Date()`, throwing "time ago" off
+        # by the server/browser UTC offset.
+        'received_at_full': timezone.localtime(ticket.received_at).isoformat(),
+        'delivered_at':      delivered_at_iso,
+        'delivered_at_full': delivered_at_iso,
         'remaining_seconds': remaining_seconds,
         'items':            items,
         'all_items_done':   all(i['status'] == 'done' for i in items),
@@ -183,6 +199,47 @@ def _build_kds_data():
 
 
 # ---------------------------------------------------------------------------
+# QUICK REQUESTS  (water, tissue, pickle, cold drink... tapped from the
+# menu page's quick-order button — shown in their own KDS section)
+# ---------------------------------------------------------------------------
+
+def _quick_request_to_dict(qr):
+    return {
+        'id':                qr.id,
+        'table_number':      qr.table_number,
+        'item_name':         qr.item.name,
+        'icon':              qr.item.icon,
+        'quantity':          qr.quantity,
+        'is_free':           qr.is_free,
+        'unit_price':        float(qr.unit_price),
+        'status':            qr.status,
+        'requested_at':      timezone.localtime(qr.requested_at).strftime('%H:%M'),
+        'requested_at_full': timezone.localtime(qr.requested_at).isoformat(),
+        'served_at_full': (
+            timezone.localtime(qr.served_at).isoformat() if qr.served_at else None
+        ),
+    }
+
+
+def _build_quick_requests_data():
+    """Pending quick requests, plus the last 20 already served (for history)."""
+    pending = (
+        QuickRequest.objects
+        .select_related('item', 'session__table')
+        .filter(status='pending')
+        .order_by('requested_at')
+    )
+    served = (
+        QuickRequest.objects
+        .select_related('item', 'session__table')
+        .filter(status='served')
+        .order_by('-served_at')[:20]
+    )
+    all_requests = list(pending) + list(served)
+    return [_quick_request_to_dict(q) for q in all_requests]
+
+
+# ---------------------------------------------------------------------------
 # PAGE VIEW
 # ---------------------------------------------------------------------------
 
@@ -191,10 +248,12 @@ def kds_display(request):
     staff        = _get_logged_in_staff(request)
     restaurant   = RestaurantDetail.objects.first()
     tickets_data = _build_kds_data()
+    quick_data   = _build_quick_requests_data()
 
     context = {
         'restaurant': restaurant,
         'tickets':    tickets_data,   # plain Python list — serialised in the template via |json_script
+        'quick_requests': quick_data,
         'now':        timezone.localtime(timezone.now()).strftime('%H:%M:%S'),
         'staff':      staff,
     }
@@ -209,8 +268,9 @@ def kds_display(request):
 def kds_poll(request):
     tickets_data = _build_kds_data()
     return JsonResponse({
-        'tickets':     tickets_data,
-        'server_time': timezone.localtime(timezone.now()).strftime('%H:%M:%S'),
+        'tickets':        tickets_data,
+        'quick_requests': _build_quick_requests_data(),
+        'server_time':    timezone.localtime(timezone.now()).strftime('%H:%M:%S'),
     })
 
 
@@ -324,3 +384,14 @@ def save_kitchen_note(request, ticket_id):
     ticket.kitchen_note = note
     ticket.save()
     return JsonResponse({'ok': True, 'note': note})
+
+
+@_login_required
+@require_POST
+def serve_quick_request(request, request_id):
+    qr = get_object_or_404(QuickRequest, id=request_id)
+    if qr.status != 'served':
+        qr.status = 'served'
+        qr.served_at = timezone.now()
+        qr.save()
+    return JsonResponse({'ok': True, 'id': qr.id, 'status': qr.status})
