@@ -1164,7 +1164,11 @@ ul{ margin:0; padding:0; list-style:none; }
 }
 </style>
 </head>
-<body>
+<body
+  data-table-number="{{ table_number }}"
+  data-quick-order-url="{% url 'quick_order' table_number=table_number %}"
+>
+{% csrf_token %}
 
 <a href="#main" class="skip-link">Skip to menu</a>
 <div class="ambient-glow" aria-hidden="true"></div>
@@ -1431,6 +1435,50 @@ ul{ margin:0; padding:0; list-style:none; }
 
   <!-- ===================== TOAST ===================== -->
   <div class="toast" id="toast"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span id="toastMsg">Added to cart</span></div>
+
+  <!-- ===================== QUICK ORDER FAB ===================== -->
+  {% if quick_items %}
+  <button type="button" class="quick-fab" id="quickFab" aria-haspopup="dialog" aria-expanded="false" aria-controls="quickPanelOverlay" aria-label="Quick order extras">
+    <i class="fa-solid fa-bell-concierge" aria-hidden="true"></i>
+  </button>
+
+  <div class="quick-panel-overlay" id="quickPanelOverlay">
+    <div class="quick-panel" role="dialog" aria-modal="true" aria-labelledby="quickPanelTitle">
+      <div class="quick-panel-handle" aria-hidden="true"></div>
+      <div class="quick-panel-head">
+        <div>
+          <h3 id="quickPanelTitle">Quick Order</h3>
+          <p class="quick-panel-sub">Need something extra? Free items go straight to the kitchen — paid ones are added to your table's bill.</p>
+        </div>
+        <button type="button" class="quick-panel-close" id="quickPanelClose" aria-label="Close quick order">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="quick-item-list" id="quickItemList">
+        {% for item in quick_items %}
+        <div class="quick-item-row">
+          <div class="quick-item-icon"><i class="fa-solid {{ item.icon }}" aria-hidden="true"></i></div>
+          <div class="quick-item-info">
+            <div class="quick-item-name">{{ item.name }}</div>
+            <div class="quick-item-tag {% if item.is_free %}free{% else %}paid{% endif %}">
+              {% if item.is_free %}Free{% else %}Rs. {{ item.price }} &middot; added to bill{% endif %}
+            </div>
+          </div>
+          <button type="button"
+                  class="quick-item-btn"
+                  data-item-id="{{ item.id }}"
+                  data-item-name="{{ item.name }}"
+                  data-is-free="{% if item.is_free %}1{% else %}0{% endif %}">
+            Request
+          </button>
+        </div>
+        {% empty %}
+        <p class="quick-empty">No quick items available right now.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
 </div>
 <script src="{% static 'js/language.js' %}"></script>
@@ -1736,6 +1784,105 @@ document.addEventListener('DOMContentLoaded', function () {
       closeLangMenu();
     }
   });
+
+  /* ---------- Quick Order (FAB) ---------- */
+  function getCookie(name) {
+    var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return match ? decodeURIComponent(match[2]) : null;
+  }
+
+  var quickFab = document.getElementById('quickFab');
+  var quickPanelOverlay = document.getElementById('quickPanelOverlay');
+  var quickPanelClose = document.getElementById('quickPanelClose');
+  var quickOrderUrl = document.body.dataset.quickOrderUrl;
+  var quickRequestCount = 0;
+
+  function bumpQuickBadge() {
+    quickRequestCount += 1;
+    var badge = quickFab.querySelector('.quick-fab-badge');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'quick-fab-badge';
+      quickFab.appendChild(badge);
+    }
+    badge.textContent = quickRequestCount;
+  }
+
+  function openQuickPanel() {
+    quickFab.classList.add('open');
+    quickFab.setAttribute('aria-expanded', 'true');
+    quickPanelOverlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeQuickPanel() {
+    quickFab.classList.remove('open');
+    quickFab.setAttribute('aria-expanded', 'false');
+    quickPanelOverlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  if (quickFab && quickPanelOverlay) {
+    quickFab.addEventListener('click', function () {
+      if (quickPanelOverlay.classList.contains('open')) closeQuickPanel();
+      else openQuickPanel();
+    });
+    if (quickPanelClose) quickPanelClose.addEventListener('click', closeQuickPanel);
+    quickPanelOverlay.addEventListener('click', function (e) {
+      if (e.target === quickPanelOverlay) closeQuickPanel();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && quickPanelOverlay.classList.contains('open')) closeQuickPanel();
+    });
+
+    document.querySelectorAll('.quick-item-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (btn.disabled || !quickOrderUrl) return;
+
+        var itemId = btn.dataset.itemId;
+        var itemName = btn.dataset.itemName;
+        var isFree = btn.dataset.isFree === '1';
+        var original = btn.innerHTML;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>';
+
+        fetch(quickOrderUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+          },
+          body: JSON.stringify({ item_id: itemId, quantity: 1 }),
+        })
+          .then(function (res) {
+            return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+          })
+          .then(function (result) {
+            if (result.ok && result.data && result.data.success) {
+              btn.classList.add('added');
+              btn.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> Requested';
+              showToast(isFree ? itemName + ' requested' : itemName + ' added to your bill');
+              bumpQuickBadge();
+              setTimeout(function () {
+                btn.classList.remove('added');
+                btn.innerHTML = original;
+                btn.disabled = false;
+              }, 1600);
+            } else {
+              btn.innerHTML = original;
+              btn.disabled = false;
+              showToast((result.data && result.data.error) || 'Could not send your request.');
+            }
+          })
+          .catch(function () {
+            btn.innerHTML = original;
+            btn.disabled = false;
+            showToast('Network error — please try again.');
+          });
+      });
+    });
+  }
 
   /* ---------- Navigation to Django views ---------- */
   document.querySelectorAll('.go-orders').forEach(function (b) {
