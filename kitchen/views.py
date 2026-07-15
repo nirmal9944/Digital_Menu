@@ -166,7 +166,10 @@ def _ticket_to_dict(ticket):
 def _build_kds_data():
     """
     Build the full KDS ticket list.
-    Includes new / preparing / ready orders, plus the last 20 delivered ones.
+    Includes new / preparing / ready orders, plus every delivered one —
+    the Completed tab's own time filter (Today / 7 days / 30 days / Year /
+    All Time) is what narrows this down client-side, so the server must
+    hand over the full history rather than an arbitrary recent slice.
     """
     # Ensure tickets exist for all active orders
     active_orders = (
@@ -191,12 +194,14 @@ def _build_kds_data():
         .order_by('-priority', 'received_at')
     )
 
-    # Recently delivered tickets (last 20)
+    # Every delivered ticket — not capped, so the Completed tab's "All Time"
+    # filter (and "Today" if a busy day has more than a handful of orders)
+    # actually shows everything instead of silently truncating.
     delivered_tickets = (
         KitchenTicket.objects
         .select_related('order__session__table')
         .filter(order__status='delivered')
-        .order_by('-received_at')[:20]
+        .order_by('-received_at')
     )
 
     all_tickets = list(active_tickets) + list(delivered_tickets)
