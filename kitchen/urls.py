@@ -21,4 +21,8 @@ urlpatterns = [
 
     # Quick requests (water, tissue, pickle, cold drink...)
     path('quick/<int:request_id>/serve/', views.serve_quick_request, name='serve_quick'),
+
+    # Food item management (stock status + preparation time)
+    path('menu-items/data/',            views.food_items_data, name='food_items_data'),
+    path('menu-items/<int:food_id>/',   views.update_food_item, name='update_food_item'),
 ]

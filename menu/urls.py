@@ -42,4 +42,12 @@ urlpatterns = [
         views.quick_order,
         name='quick_order',
     ),
+
+    # Customer cancels a single food item from order_tracking.html
+    # (only while the kitchen hasn't accepted the order yet)
+    path(
+        '<int:table_number>/order-item/<int:item_id>/cancel/',
+        views.cancel_order_item,
+        name='cancel_order_item',
+    ),
 ]

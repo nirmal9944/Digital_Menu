@@ -4,7 +4,7 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.db import transaction
 
-from menu.models import Order, OrderItem, RestaurantDetail, QuickRequest
+from menu.models import Order, OrderItem, RestaurantDetail, QuickRequest, FoodItem
 from .models import KitchenStaff, KitchenTicket, KitchenTicketItem
 
 
@@ -76,10 +76,11 @@ def _ensure_ticket_exists(order):
         order=order,
         defaults={'customer_note': order.customer_note or ''},
     )
-    for item in order.items.select_related('food'):
+    for item in order.items.select_related('food').filter(is_cancelled=False):
         KitchenTicketItem.objects.get_or_create(
             ticket=ticket,
             order_item=item,
+            defaults={'preparation_time': item.food.preparation_time},
         )
     return ticket
 
@@ -178,11 +179,15 @@ def _build_kds_data():
     for order in active_orders:
         _ensure_ticket_exists(order)
 
-    # Active tickets
+    # Active tickets. A ticket with no ticket_items left means every item on
+    # that order was cancelled by the customer before the kitchen accepted
+    # it (see menu.views.cancel_order_item) — it should just disappear from
+    # the board rather than sit there as an empty "New" request.
     active_tickets = (
         KitchenTicket.objects
         .select_related('order__session__table')
         .filter(order__status__in=['new', 'preparing', 'ready'])
+        .exclude(ticket_items__isnull=True)
         .order_by('-priority', 'received_at')
     )
 
@@ -395,3 +400,61 @@ def serve_quick_request(request, request_id):
         qr.served_at = timezone.now()
         qr.save()
     return JsonResponse({'ok': True, 'id': qr.id, 'status': qr.status})
+
+
+# ---------------------------------------------------------------------------
+# FOOD ITEM MANAGEMENT  (kitchen staff can mark an item out of stock, or
+# adjust how long it takes to prepare, straight from the KDS)
+# ---------------------------------------------------------------------------
+
+def _food_item_to_dict(food):
+    return {
+        'id':                food.id,
+        'food_name':         food.food_name,
+        'category':          food.category.category_name,
+        'price':             float(food.price),
+        'is_available':      food.is_available,
+        'preparation_time':  food.preparation_time,
+        'image_url':         food.image.url if food.image else None,
+    }
+
+
+@_login_required
+def food_items_data(request):
+    """JSON list of every food item, for the KDS 'Menu Items' panel."""
+    foods = (
+        FoodItem.objects
+        .select_related('category')
+        .order_by('category__category_name', 'food_name')
+    )
+    return JsonResponse({'foods': [_food_item_to_dict(f) for f in foods]})
+
+
+@_login_required
+@require_POST
+def update_food_item(request, food_id):
+    """
+    Kitchen staff toggling stock / editing prep time from the KDS.
+
+    Changing preparation_time here only affects FUTURE tickets — orders
+    already placed keep the prep time that was frozen onto their
+    KitchenTicketItem when the ticket was created (see
+    kitchen.models.KitchenTicketItem.preparation_time), so an order
+    already running is never re-timed mid-flight.
+    """
+    food = get_object_or_404(FoodItem, id=food_id)
+
+    if 'is_available' in request.POST:
+        food.is_available = request.POST.get('is_available') in ('1', 'true', 'True')
+
+    if 'preparation_time' in request.POST:
+        try:
+            minutes = int(request.POST.get('preparation_time'))
+        except (TypeError, ValueError):
+            return JsonResponse({'error': 'Invalid preparation time'}, status=400)
+        if minutes < 1:
+            return JsonResponse({'error': 'Preparation time must be at least 1 minute'}, status=400)
+        food.preparation_time = minutes
+
+    food.save()
+    return JsonResponse({'ok': True, 'food': _food_item_to_dict(food)})

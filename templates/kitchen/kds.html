@@ -359,6 +359,49 @@
   .priority-select{appearance:none;-webkit-appearance:none;border:1px solid var(--border);background:#fff;padding:7px 28px 7px 10px;border-radius:8px;font-size:12.5px;font-family:'Poppins',sans-serif;font-weight:600;color:var(--text-1);cursor:pointer;transition:var(--transition);}
   .priority-select:focus{outline:none;border-color:var(--brand);}
 
+  /* ===== MENU ITEMS (food-item management) ===== */
+  #ordersView{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+  #ordersView[hidden]{display:none;}
+  .menu-items-view{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+  .menu-items-view[hidden]{display:none;}
+  .fi-toolbar{display:flex;align-items:center;gap:10px;padding:14px 32px;background:#fff;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
+  .fi-search-wrap{position:relative;flex:1;min-width:200px;max-width:340px;}
+  .fi-search-wrap .material-symbols-outlined.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:17px;color:var(--text-3);pointer-events:none;}
+  #menuItemsSearch{width:100%;appearance:none;border:1px solid var(--border);background:#fff;padding:8px 14px 8px 32px;border-radius:24px;font-size:12.5px;font-family:'Poppins',sans-serif;color:var(--text-1);transition:var(--transition);}
+  #menuItemsSearch:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(255,87,34,.15);}
+  .fi-grid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;padding:20px 32px 28px;align-content:start;}
+
+  .fi-card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow-sm);transition:var(--transition);animation:cardIn .3s ease;}
+  .fi-card.out-of-stock{opacity:.65;}
+  .fi-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px;}
+  .fi-card-name{font-size:14.5px;font-weight:700;color:var(--text-1);line-height:1.3;}
+  .fi-card-category{font-size:11px;color:var(--text-3);margin-top:2px;}
+  .fi-card-price{font-size:13px;font-weight:600;color:var(--brand);margin-top:8px;}
+
+  .fi-switch{position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0;}
+  .fi-switch input{opacity:0;width:0;height:0;}
+  .fi-switch-track{position:absolute;inset:0;background:#D9DADD;border-radius:22px;cursor:pointer;transition:var(--transition);}
+  .fi-switch-track::before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:var(--transition);box-shadow:0 1px 3px rgba(0,0,0,.25);}
+  .fi-switch input:checked + .fi-switch-track{background:var(--c-ready);}
+  .fi-switch input:checked + .fi-switch-track::before{transform:translateX(18px);}
+
+  .fi-stock-label{font-size:10.5px;font-weight:700;letter-spacing:.3px;margin-top:10px;display:inline-block;padding:2px 10px;border-radius:20px;}
+  .fi-stock-label.in{background:var(--c-ready-bg);color:var(--c-ready);}
+  .fi-stock-label.out{background:var(--c-new-bg);color:var(--c-new);}
+
+  .fi-prep-row{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);}
+  .fi-prep-row .material-symbols-outlined{font-size:16px;color:var(--text-3);}
+  .fi-prep-label{font-size:11.5px;color:var(--text-2);flex-shrink:0;}
+  .fi-prep-input{width:56px;border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:12.5px;font-family:'Poppins',sans-serif;color:var(--text-1);text-align:center;}
+  .fi-prep-input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(255,87,34,.15);}
+  .fi-prep-unit{font-size:11.5px;color:var(--text-3);}
+  .fi-prep-save{margin-left:auto;background:var(--gradient-brand);color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:11.5px;font-weight:600;transition:var(--transition);opacity:0;pointer-events:none;}
+  .fi-prep-save.show{opacity:1;pointer-events:auto;}
+  .fi-prep-save:hover{box-shadow:0 4px 12px rgba(255,87,34,.3);}
+
+  .fi-empty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text-3);gap:8px;padding:60px 10px;text-align:center;}
+  .fi-empty .material-symbols-outlined{font-size:40px;color:#D9DADD;}
+
   /* ===== TOAST ===== */
   .toast-wrap{position:fixed;bottom:28px;right:28px;display:flex;flex-direction:column;gap:10px;z-index:200;}
   .toast{display:flex;align-items:center;gap:10px;background:#16181C;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);animation:toastIn .35s ease;max-width:340px;}
@@ -442,6 +485,7 @@
       </div>
 
       <button class="nav-item" id="navQuick"><span class="material-symbols-outlined">notifications_active</span><span class="nav-label">Quick Requests</span><span class="nav-badge" id="navQuickBadge">0</span></button>
+      <button class="nav-item" id="navMenuItems"><span class="material-symbols-outlined">restaurant_menu</span><span class="nav-label">Menu Items</span></button>
     </nav>
 
     <div class="sidebar-spacer"></div>
@@ -472,8 +516,8 @@
       <div class="topbar-left">
         <button class="hamburger-btn" id="hamburgerBtn" aria-label="Open menu"><span class="material-symbols-outlined">menu</span></button>
         <div>
-          <h1>Kitchen Orders</h1>
-          <p>Manage and update order status in real-time</p>
+          <h1 id="pageTitle">Kitchen Orders</h1>
+          <p id="pageSubtitle">Manage and update order status in real-time</p>
         </div>
       </div>
       <div class="topbar-right">
@@ -512,6 +556,7 @@
       </div>
     </header>
 
+    <div id="ordersView">
     <div class="tabs-row">
       <div class="tabs" id="tabsRow">
         <button class="tab-btn active" data-tab="all">All Orders <span class="tab-count" id="tabAllCount">0</span></button>
@@ -601,6 +646,30 @@
       <span id="lastUpdated">Last updated: --:--:--</span>&nbsp;·&nbsp;<span>Real-time</span>
       <span class="pulse-dot"></span>
     </div>
+    </div>
+
+    <!-- ========== MENU ITEMS VIEW ========== -->
+    <section class="menu-items-view" id="menuItemsView" hidden>
+      <div class="fi-toolbar">
+        <div class="fi-search-wrap">
+          <span class="material-symbols-outlined search-icon">search</span>
+          <input type="text" id="menuItemsSearch" placeholder="Search menu items…">
+        </div>
+        <div class="select-wrap">
+          <select class="styled-select" id="menuItemsCategoryFilter"><option value="all">All Categories</option></select>
+          <span class="material-symbols-outlined sel-chev">expand_more</span>
+        </div>
+        <div class="select-wrap">
+          <select class="styled-select" id="menuItemsAvailFilter">
+            <option value="all">All Items</option>
+            <option value="available">In Stock</option>
+            <option value="unavailable">Out of Stock</option>
+          </select>
+          <span class="material-symbols-outlined sel-chev">expand_more</span>
+        </div>
+      </div>
+      <div class="fi-grid" id="menuItemsGrid"></div>
+    </section>
   </main>
 </div>
 
@@ -628,6 +697,8 @@ const URLS = {
   acknowledge: '{% url "kitchen:acknowledge" ticket_id=999999 %}',
   note:        '{% url "kitchen:note" ticket_id=999999 %}',
   serveQuick:  '{% url "kitchen:serve_quick" request_id=999999 %}',
+  foodItemsData: '{% url "kitchen:food_items_data" %}',
+  updateFoodItem: '{% url "kitchen:update_food_item" food_id=999999 %}',
 };
 
 function buildUrl(template, id){
@@ -652,6 +723,13 @@ let notifications = [];
 let timeUpdateInterval = null;
 const STATUSES = ['new','preparing','ready','delivered'];
 const STATUS_LABEL = { new:'NEW', preparing:'PREPARING', ready:'READY', delivered:'COMPLETED' };
+
+/* -------- MENU ITEMS STATE -------- */
+let foodItems = [];
+let menuItemsLoaded = false;
+let menuSearchQuery = '';
+let menuCategoryFilter = 'all';
+let menuAvailFilter = 'all';
 
 /* -------- TIME HELPERS (FIXED) -------- */
 function timeAgo(isoStr){
@@ -887,6 +965,144 @@ function addNotif(text){
   if(notifications.length > 15) notifications.pop();
   renderNotifications();
 }
+
+/* -------- MENU ITEMS (food-item management) -------- */
+function showOrdersView(){
+  document.getElementById('ordersView').hidden = false;
+  document.getElementById('menuItemsView').hidden = true;
+  document.getElementById('pageTitle').textContent = 'Kitchen Orders';
+  document.getElementById('pageSubtitle').textContent = 'Manage and update order status in real-time';
+}
+
+function showMenuItemsView(){
+  document.getElementById('ordersView').hidden = true;
+  document.getElementById('menuItemsView').hidden = false;
+  document.getElementById('pageTitle').textContent = 'Menu Items';
+  document.getElementById('pageSubtitle').textContent = 'Mark items out of stock and set preparation time';
+
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('navMenuItems').classList.add('active');
+
+  if(!menuItemsLoaded){
+    loadFoodItems();
+  } else {
+    renderMenuItems();
+  }
+}
+
+function loadFoodItems(){
+  const grid = document.getElementById('menuItemsGrid');
+  grid.innerHTML = `<div class="fi-empty"><span class="material-symbols-outlined">hourglass_top</span><span>Loading menu items…</span></div>`;
+  fetch(URLS.foodItemsData)
+    .then(r => r.json())
+    .then(data => {
+      foodItems = data.foods || [];
+      menuItemsLoaded = true;
+      buildMenuCategoryFilter();
+      renderMenuItems();
+    })
+    .catch(() => {
+      grid.innerHTML = `<div class="fi-empty"><span class="material-symbols-outlined">error</span><span>Could not load menu items.</span></div>`;
+    });
+}
+
+function buildMenuCategoryFilter(){
+  const sel = document.getElementById('menuItemsCategoryFilter');
+  const cur = sel.value || 'all';
+  const categories = [...new Set(foodItems.map(f => f.category).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="all">All Categories</option>' +
+    categories.map(c => `<option value="${esc(c)}"${cur===c?' selected':''}>${esc(c)}</option>`).join('');
+  menuCategoryFilter = sel.value;
+}
+
+function renderMenuItems(){
+  const grid = document.getElementById('menuItemsGrid');
+  let items = foodItems.slice();
+
+  if(menuCategoryFilter !== 'all'){
+    items = items.filter(f => f.category === menuCategoryFilter);
+  }
+  if(menuAvailFilter === 'available'){
+    items = items.filter(f => f.is_available);
+  } else if(menuAvailFilter === 'unavailable'){
+    items = items.filter(f => !f.is_available);
+  }
+  if(menuSearchQuery){
+    items = items.filter(f => f.food_name.toLowerCase().includes(menuSearchQuery));
+  }
+
+  if(items.length === 0){
+    grid.innerHTML = `<div class="fi-empty"><span class="material-symbols-outlined">search_off</span><span>No menu items match.</span></div>`;
+    return;
+  }
+
+  grid.innerHTML = items.map(f => `
+    <div class="fi-card${f.is_available ? '' : ' out-of-stock'}" data-food-id="${f.id}">
+      <div class="fi-card-top">
+        <div>
+          <div class="fi-card-name">${esc(f.food_name)}</div>
+          <div class="fi-card-category">${esc(f.category)}</div>
+        </div>
+        <label class="fi-switch">
+          <input type="checkbox" ${f.is_available ? 'checked' : ''} onchange="MenuItems.toggleAvailability(${f.id}, this.checked)">
+          <span class="fi-switch-track"></span>
+        </label>
+      </div>
+      <div class="fi-card-price">Rs. ${f.price.toFixed(2)}</div>
+      <span class="fi-stock-label ${f.is_available ? 'in' : 'out'}">${f.is_available ? 'In Stock' : 'Out of Stock'}</span>
+      <div class="fi-prep-row">
+        <span class="material-symbols-outlined">timer</span>
+        <span class="fi-prep-label">Prep time</span>
+        <input type="number" min="1" class="fi-prep-input" value="${f.preparation_time}"
+               oninput="MenuItems.onPrepInput(${f.id}, this)">
+        <span class="fi-prep-unit">min</span>
+        <button type="button" class="fi-prep-save" id="fi-save-${f.id}" onclick="MenuItems.savePrepTime(${f.id}, this)">Save</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.MenuItems = {
+  toggleAvailability(foodId, isAvailable){
+    csrfPost(buildUrl(URLS.updateFoodItem, foodId), { is_available: isAvailable ? '1' : '0' })
+      .then(r => r.json())
+      .then(data => {
+        if(data.error){ showToast(data.error, 'error'); return; }
+        const item = foodItems.find(f => f.id === foodId);
+        if(item) item.is_available = data.food.is_available;
+        showToast(`${data.food.food_name} marked ${data.food.is_available ? 'in stock' : 'out of stock'}.`);
+        renderMenuItems();
+      })
+      .catch(() => showToast('Could not update stock status.', 'error'));
+  },
+
+  onPrepInput(foodId, inputEl){
+    const saveBtn = document.getElementById('fi-save-' + foodId);
+    const item = foodItems.find(f => f.id === foodId);
+    const changed = item && String(item.preparation_time) !== inputEl.value;
+    if(saveBtn) saveBtn.classList.toggle('show', !!changed);
+  },
+
+  savePrepTime(foodId, btnEl){
+    const card = btnEl.closest('.fi-card');
+    const input = card.querySelector('.fi-prep-input');
+    const minutes = parseInt(input.value, 10);
+    if(!minutes || minutes < 1){
+      showToast('Preparation time must be at least 1 minute.', 'error');
+      return;
+    }
+    csrfPost(buildUrl(URLS.updateFoodItem, foodId), { preparation_time: minutes })
+      .then(r => r.json())
+      .then(data => {
+        if(data.error){ showToast(data.error, 'error'); return; }
+        const item = foodItems.find(f => f.id === foodId);
+        if(item) item.preparation_time = data.food.preparation_time;
+        btnEl.classList.remove('show');
+        showToast(`${data.food.food_name} prep time set to ${data.food.preparation_time} min. Orders already in progress keep their original time.`);
+      })
+      .catch(() => showToast('Could not update preparation time.', 'error'));
+  },
+};
 
 /* -------- TABLE FILTER -------- */
 function buildTableFilter(){
@@ -1399,6 +1615,7 @@ function closeModal(){
 
 /* -------- TAB / FILTER WIRING -------- */
 function setActiveTab(tab){
+  showOrdersView();
   activeTab = tab;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   
@@ -1483,6 +1700,21 @@ function init(){
   document.getElementById('navReady').addEventListener('click',     ()=>{ setActiveTab('ready');     toggleSidebar(false); });
   document.getElementById('navCompleted').addEventListener('click', ()=>{ setActiveTab('delivered'); toggleSidebar(false); });
   document.getElementById('navQuick').addEventListener('click',     ()=>{ setActiveTab('quick');     toggleSidebar(false); });
+  document.getElementById('navMenuItems').addEventListener('click', ()=>{ showMenuItemsView();       toggleSidebar(false); });
+
+  // Menu items search / filters
+  document.getElementById('menuItemsSearch').addEventListener('input', function(e){
+    menuSearchQuery = e.target.value.trim().toLowerCase();
+    renderMenuItems();
+  });
+  document.getElementById('menuItemsCategoryFilter').addEventListener('change', function(e){
+    menuCategoryFilter = e.target.value;
+    renderMenuItems();
+  });
+  document.getElementById('menuItemsAvailFilter').addEventListener('change', function(e){
+    menuAvailFilter = e.target.value;
+    renderMenuItems();
+  });
 
   // Quick-request search
   document.getElementById('quickSearchInput').addEventListener('input', function(e){

@@ -89,6 +89,13 @@ class KitchenTicketItem(models.Model):
     started_at         = models.DateTimeField(null=True, blank=True)
     completed_at       = models.DateTimeField(null=True, blank=True)
 
+    # Snapshot of FoodItem.preparation_time taken the moment this ticket item
+    # is created. Kitchen staff can change a food's prep time at any moment
+    # (e.g. because the kitchen is backed up) — that must only affect orders
+    # placed AFTER the change, never the countdown of an order already in
+    # progress. Frozen here instead of read live from FoodItem.
+    preparation_time   = models.PositiveIntegerField(default=15)
+
     class Meta:
         ordering = ['id']
 
@@ -117,10 +124,3 @@ class KitchenTicketItem(models.Model):
     @property
     def special_instruction(self):
         return self.order_item.special_instruction or ''
-
-    @property
-    def preparation_time(self):
-        try:
-            return self.order_item.food.preparation_time
-        except Exception:
-            return 15

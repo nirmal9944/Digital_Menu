@@ -1,6 +1,6 @@
 import json
 
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.utils import timezone
@@ -177,7 +177,7 @@ def _build_tracking_data(table_number):
     if not all_delivered:
         slowest_remaining = 0
         for order in orders.exclude(status='delivered'):
-            order_items = list(order.items.select_related('food'))
+            order_items = list(order.items.select_related('food').filter(is_cancelled=False))
             prep_minutes = max(
                 (i.food.preparation_time for i in order_items),
                 default=15,
@@ -192,7 +192,8 @@ def _build_tracking_data(table_number):
     items = []
     subtotal = 0
     for item in items_qs:
-        subtotal += float(item.subtotal)
+        if not item.is_cancelled:
+            subtotal += float(item.subtotal)
         items.append({
             'id': item.id,
             'name': item.food.food_name,
@@ -201,6 +202,11 @@ def _build_tracking_data(table_number):
             'quantity': item.quantity,
             'unit_price': float(item.unit_price),
             'subtotal': float(item.subtotal),
+            'is_cancelled': item.is_cancelled,
+            # Only cancellable while the kitchen hasn't accepted/started the
+            # order yet — once any item in the order moves to preparing,
+            # the whole order (and every item in it) is locked in.
+            'can_cancel': (not item.is_cancelled) and item.order.status == 'new',
         })
 
     # Quick requests (water, tissue, pickle, cold drink...) — free ones are
@@ -216,6 +222,8 @@ def _build_tracking_data(table_number):
             'quantity': qr.quantity,
             'unit_price': 0.0 if qr.is_free else float(qr.unit_price),
             'subtotal': float(qr.subtotal),
+            'is_cancelled': False,
+            'can_cancel': False,
         })
 
     bill = Bill.objects.filter(session=session).first()
@@ -399,6 +407,52 @@ def place_order(request, table_number):
         'order_id': order.id,
         'session_id': session.id,
     })
+
+
+# ---------------------------------------------------------------------------
+# CANCEL ORDER ITEM
+# ---------------------------------------------------------------------------
+#
+# Lets a customer back out of a single food item from order_tracking.html —
+# only while the kitchen hasn't accepted the order yet (status == 'new').
+# Once any item in the order starts preparing, the whole order (and every
+# item in it) is locked in and this is rejected.
+
+@require_POST
+def cancel_order_item(request, table_number, item_id):
+    item = get_object_or_404(
+        OrderItem.objects.select_related('order__session__table', 'food'),
+        id=item_id,
+    )
+
+    if item.order.session.table.table_number != table_number:
+        return JsonResponse({'success': False, 'error': 'Item not found.'}, status=404)
+
+    if item.is_cancelled:
+        return JsonResponse({'success': False, 'error': 'This item is already cancelled.'}, status=400)
+
+    if item.order.status != 'new':
+        return JsonResponse({
+            'success': False,
+            'error': 'The kitchen has already accepted this order — it can no longer be cancelled.',
+        }, status=400)
+
+    item.is_cancelled = True
+    item.cancelled_at = timezone.now()
+    item.save(update_fields=['is_cancelled', 'cancelled_at'])
+
+    # If the kitchen dashboard already turned this into a ticket line (it's
+    # still 'pending' since the order was still 'new'), drop it so the
+    # kitchen never sees a cancelled item to prepare.
+    kitchen_item = getattr(item, 'kitchen_item', None)
+    if kitchen_item is not None and kitchen_item.status == 'pending':
+        kitchen_item.delete()
+
+    bill = Bill.objects.filter(session=item.order.session, payment_status='unpaid').first()
+    if bill:
+        bill.recalculate()
+
+    return JsonResponse({'success': True, 'item_name': item.food.food_name})
 
 
 # ---------------------------------------------------------------------------

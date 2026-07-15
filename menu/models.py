@@ -427,6 +427,12 @@ class OrderItem(models.Model):
         default=0
     )
 
+    # A customer can cancel an item while the kitchen hasn't started it yet
+    # (order.status == 'new'). Kept as a row rather than deleted so the
+    # receipt/order-tracking history still shows what was cancelled.
+    is_cancelled = models.BooleanField(default=False)
+    cancelled_at = models.DateTimeField(blank=True, null=True)
+
     def save(self, *args, **kwargs):
         self.subtotal = self.quantity * self.unit_price
         super().save(*args, **kwargs)
@@ -503,7 +509,7 @@ class Bill(models.Model):
         """
         items = OrderItem.objects.filter(
             order__session=self.session
-        ).exclude(order__status='cancelled')
+        ).exclude(order__status='cancelled').exclude(is_cancelled=True)
 
         food_subtotal = sum((item.subtotal for item in items), Decimal('0'))
         quick_subtotal = sum(
