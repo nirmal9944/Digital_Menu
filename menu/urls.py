@@ -50,4 +50,12 @@ urlpatterns = [
         views.cancel_order_item,
         name='cancel_order_item',
     ),
+
+    # Post-payment feedback form shown on order_tracking.html once a bill
+    # is marked paid (see the 'feedback' state in _build_tracking_data)
+    path(
+        '<int:table_number>/feedback/submit/',
+        views.submit_feedback,
+        name='submit_feedback',
+    ),
 ]

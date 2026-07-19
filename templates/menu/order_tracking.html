@@ -439,6 +439,55 @@
   .success-desc{ font-size:var(--text-sm); color:var(--color-text-secondary); line-height:1.6; margin-top:8px; position:relative; z-index:1; }
 
   /* =========================================================
+     10.5 STATE — FEEDBACK (post-payment rating prompt)
+  ========================================================= */
+  .feedback-timer{
+    display:inline-flex; align-items:center; gap:5px;
+    font-size:.72rem; font-weight:700; color:var(--color-text-secondary);
+    background:var(--color-page-bg); padding:4px 10px; border-radius:var(--radius-pill);
+    white-space:nowrap; flex-shrink:0;
+  }
+  .rating-group{ margin-bottom:22px; }
+  .rating-group:last-of-type{ margin-bottom:0; }
+  .rating-label{ font-size:var(--text-sm); font-weight:600; margin-bottom:10px; }
+  .optional-tag{ font-size:.66rem; font-weight:700; color:var(--color-text-tertiary); text-transform:uppercase; letter-spacing:.4px; margin-left:4px; }
+  .rating-row{ display:flex; gap:7px; justify-content:space-between; }
+  .rating-btn{
+    flex:1; min-width:44px; min-height:44px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.3rem;
+    background:var(--color-page-bg);
+    border:1.5px solid transparent;
+    border-radius:var(--radius-md);
+    cursor:pointer;
+    transition:transform .15s ease, border-color .2s ease, background .2s ease;
+  }
+  .rating-btn:hover{ transform:translateY(-2px); }
+  .rating-btn:active{ transform:scale(.92); }
+  .rating-btn.selected{
+    background:var(--color-primary-light);
+    border-color:var(--color-primary);
+    transform:scale(1.08);
+  }
+  .feedback-comment-wrap{ margin-top:2px; }
+  .feedback-textarea{
+    width:100%; margin-top:8px;
+    padding:12px 14px;
+    font-family:inherit; font-size:var(--text-sm); color:var(--color-text-primary);
+    background:var(--color-page-bg);
+    border:1.5px solid var(--color-border);
+    border-radius:var(--radius-md);
+    resize:vertical;
+    transition:border-color .2s ease;
+  }
+  .feedback-textarea:focus{ outline:none; border-color:var(--color-primary); }
+  .feedback-submit-btn{ margin-top:22px; }
+  .feedback-thankyou{ text-align:center; padding:8px 0; }
+  .feedback-thankyou i{ font-size:2.2rem; color:var(--color-green); margin-bottom:10px; }
+  .feedback-thankyou p{ font-size:var(--text-base); font-weight:700; }
+  .feedback-thankyou span{ font-size:var(--text-sm); color:var(--color-text-secondary); display:block; margin-top:4px; }
+
+  /* =========================================================
      11. RECEIPT (shared markup, used by both modal + sidebar)
   ========================================================= */
   .receipt-row{ display:flex; align-items:center; justify-content:space-between; padding:10px 0; font-size:var(--text-sm); }
@@ -771,6 +820,108 @@
             </div>
           </section>
 
+          <!-- ===================== STATE 4 — FEEDBACK (shown once the bill is paid) ===================== -->
+          <section class="gap-16" id="stateFeedback" {% if tracking.state != 'feedback' %}hidden{% endif %}>
+
+            <div class="success-card anim-in">
+              <div class="success-check"><i class="fa-solid fa-heart"></i></div>
+              <h2 class="success-title">Thanks for dining with us!</h2>
+              <p class="success-desc">Your bill is settled. Mind sharing a quick rating before you go?</p>
+            </div>
+
+            <div class="card anim-in d1" id="feedbackFormCard">
+              <div class="section-row">
+                <h2>Rate your visit</h2>
+                <span class="feedback-timer" id="feedbackTimer" aria-live="polite">
+                  <i class="fa-regular fa-clock" aria-hidden="true"></i> Closing in <span id="feedbackTimerValue">60</span>s
+                </span>
+              </div>
+
+              <form id="feedbackForm">
+                <div class="rating-group" data-rating-key="overall_rating">
+                  <p class="rating-label" id="labelOverall">Overall Dining Experience</p>
+                  <div class="rating-row" role="radiogroup" aria-labelledby="labelOverall">
+                    <button type="button" class="rating-btn" data-value="1" role="radio" aria-checked="false" aria-label="1 of 5, very unsatisfied">😞</button>
+                    <button type="button" class="rating-btn" data-value="2" role="radio" aria-checked="false" aria-label="2 of 5, unsatisfied">😕</button>
+                    <button type="button" class="rating-btn" data-value="3" role="radio" aria-checked="false" aria-label="3 of 5, neutral">😐</button>
+                    <button type="button" class="rating-btn" data-value="4" role="radio" aria-checked="false" aria-label="4 of 5, satisfied">🙂</button>
+                    <button type="button" class="rating-btn" data-value="5" role="radio" aria-checked="false" aria-label="5 of 5, very satisfied">😄</button>
+                  </div>
+                </div>
+
+                <div class="rating-group" data-rating-key="food_rating">
+                  <p class="rating-label" id="labelFood">Food Quality &amp; Taste</p>
+                  <div class="rating-row" role="radiogroup" aria-labelledby="labelFood">
+                    <button type="button" class="rating-btn" data-value="1" role="radio" aria-checked="false" aria-label="1 of 5, very unsatisfied">😞</button>
+                    <button type="button" class="rating-btn" data-value="2" role="radio" aria-checked="false" aria-label="2 of 5, unsatisfied">😕</button>
+                    <button type="button" class="rating-btn" data-value="3" role="radio" aria-checked="false" aria-label="3 of 5, neutral">😐</button>
+                    <button type="button" class="rating-btn" data-value="4" role="radio" aria-checked="false" aria-label="4 of 5, satisfied">🙂</button>
+                    <button type="button" class="rating-btn" data-value="5" role="radio" aria-checked="false" aria-label="5 of 5, very satisfied">😄</button>
+                  </div>
+                </div>
+
+                <div class="rating-group" data-rating-key="accuracy_rating">
+                  <p class="rating-label" id="labelAccuracy">Order Accuracy</p>
+                  <div class="rating-row" role="radiogroup" aria-labelledby="labelAccuracy">
+                    <button type="button" class="rating-btn" data-value="1" role="radio" aria-checked="false" aria-label="1 of 5, very unsatisfied">😞</button>
+                    <button type="button" class="rating-btn" data-value="2" role="radio" aria-checked="false" aria-label="2 of 5, unsatisfied">😕</button>
+                    <button type="button" class="rating-btn" data-value="3" role="radio" aria-checked="false" aria-label="3 of 5, neutral">😐</button>
+                    <button type="button" class="rating-btn" data-value="4" role="radio" aria-checked="false" aria-label="4 of 5, satisfied">🙂</button>
+                    <button type="button" class="rating-btn" data-value="5" role="radio" aria-checked="false" aria-label="5 of 5, very satisfied">😄</button>
+                  </div>
+                </div>
+
+                <div class="rating-group" data-rating-key="speed_rating">
+                  <p class="rating-label" id="labelSpeed">Speed of Service</p>
+                  <div class="rating-row" role="radiogroup" aria-labelledby="labelSpeed">
+                    <button type="button" class="rating-btn" data-value="1" role="radio" aria-checked="false" aria-label="1 of 5, very unsatisfied">😞</button>
+                    <button type="button" class="rating-btn" data-value="2" role="radio" aria-checked="false" aria-label="2 of 5, unsatisfied">😕</button>
+                    <button type="button" class="rating-btn" data-value="3" role="radio" aria-checked="false" aria-label="3 of 5, neutral">😐</button>
+                    <button type="button" class="rating-btn" data-value="4" role="radio" aria-checked="false" aria-label="4 of 5, satisfied">🙂</button>
+                    <button type="button" class="rating-btn" data-value="5" role="radio" aria-checked="false" aria-label="5 of 5, very satisfied">😄</button>
+                  </div>
+                </div>
+
+                <div class="rating-group" data-rating-key="qr_system_rating">
+                  <p class="rating-label" id="labelQr">Ease of Using the QR Ordering System</p>
+                  <div class="rating-row" role="radiogroup" aria-labelledby="labelQr">
+                    <button type="button" class="rating-btn" data-value="1" role="radio" aria-checked="false" aria-label="1 of 5, very unsatisfied">😞</button>
+                    <button type="button" class="rating-btn" data-value="2" role="radio" aria-checked="false" aria-label="2 of 5, unsatisfied">😕</button>
+                    <button type="button" class="rating-btn" data-value="3" role="radio" aria-checked="false" aria-label="3 of 5, neutral">😐</button>
+                    <button type="button" class="rating-btn" data-value="4" role="radio" aria-checked="false" aria-label="4 of 5, satisfied">🙂</button>
+                    <button type="button" class="rating-btn" data-value="5" role="radio" aria-checked="false" aria-label="5 of 5, very satisfied">😄</button>
+                  </div>
+                </div>
+
+                <div class="rating-group" data-rating-key="value_rating" data-optional="1">
+                  <p class="rating-label" id="labelValue">Value for Money <span class="optional-tag">Optional</span></p>
+                  <div class="rating-row" role="radiogroup" aria-labelledby="labelValue">
+                    <button type="button" class="rating-btn" data-value="1" role="radio" aria-checked="false" aria-label="1 of 5, very unsatisfied">😞</button>
+                    <button type="button" class="rating-btn" data-value="2" role="radio" aria-checked="false" aria-label="2 of 5, unsatisfied">😕</button>
+                    <button type="button" class="rating-btn" data-value="3" role="radio" aria-checked="false" aria-label="3 of 5, neutral">😐</button>
+                    <button type="button" class="rating-btn" data-value="4" role="radio" aria-checked="false" aria-label="4 of 5, satisfied">🙂</button>
+                    <button type="button" class="rating-btn" data-value="5" role="radio" aria-checked="false" aria-label="5 of 5, very satisfied">😄</button>
+                  </div>
+                </div>
+
+                <div class="feedback-comment-wrap">
+                  <label for="feedbackComment" class="rating-label">Anything else you'd like to tell us? <span class="optional-tag">Optional</span></label>
+                  <textarea id="feedbackComment" class="feedback-textarea" maxlength="2000" rows="3" placeholder="Tell us more…"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary feedback-submit-btn" id="feedbackSubmitBtn" disabled>
+                  <i class="fa-solid fa-paper-plane"></i> Submit Feedback
+                </button>
+              </form>
+
+              <div class="feedback-thankyou" id="feedbackThankYou" hidden>
+                <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                <p>Thank you for your feedback!</p>
+                <span>We hope to see you again at {{ restaurant.restaurant_name|default:"Flavoria" }} soon.</span>
+              </div>
+            </div>
+          </section>
+
         </div>
 
         <!-- ===================== RECEIPT SIDEBAR (iPad+ only) ===================== -->
@@ -877,17 +1028,20 @@ const langManager = new LanguageManager();
   var API_URL = "{% url 'order_status_api' table_number=table_number %}";
   var REQUEST_BILL_URL = "{% url 'request_bill' table_number=table_number %}";
   var CANCEL_ITEM_URL_TEMPLATE = "{% url 'cancel_order_item' table_number=table_number item_id=999999 %}";
+  var SUBMIT_FEEDBACK_URL = "{% url 'submit_feedback' table_number=table_number %}";
   var CSRF_TOKEN = "{{ csrf_token }}";
   var POLL_INTERVAL_MS = 6000;
 
   var STEP_LABELS = ["Order<br>Received", "Preparing", "Ready", "Delivered"];
   var TINTS = ["tint-a", "tint-b", "tint-c"];
+  var REQUIRED_RATING_KEYS = ["overall_rating", "food_rating", "accuracy_rating", "speed_rating", "qr_system_rating"];
 
   var topShell = document.getElementById("topShell");
   var stateEmpty = document.getElementById("stateEmpty");
   var trackingGrid = document.getElementById("trackingGrid");
   var stateActive = document.getElementById("stateActive");
   var stateCompleted = document.getElementById("stateCompleted");
+  var stateFeedback = document.getElementById("stateFeedback");
   var toastEl = document.getElementById("toast");
   var livePill = document.getElementById("livePill");
   var receiptOverlay = document.getElementById("receiptOverlay");
@@ -896,6 +1050,17 @@ const langManager = new LanguageManager();
   var localRemaining = 0;
   var countdownTimer = null;
   var pollTimer = null;
+
+  var feedbackForm = document.getElementById("feedbackForm");
+  var feedbackFormCard = document.getElementById("feedbackFormCard");
+  var feedbackThankYou = document.getElementById("feedbackThankYou");
+  var feedbackSubmitBtn = document.getElementById("feedbackSubmitBtn");
+  var feedbackComment = document.getElementById("feedbackComment");
+  var feedbackTimerValue = document.getElementById("feedbackTimerValue");
+  var feedbackRatings = {};
+  var feedbackSubmitted = false;
+  var feedbackCountdownTimer = null;
+  var feedbackSecondsLocal = 60;
 
   /* ---------------------------------------------------------
      STICKY HEADER SHADOW ON SCROLL
@@ -1147,6 +1312,25 @@ const langManager = new LanguageManager();
   }
 
   /* ---------------------------------------------------------
+     FEEDBACK COUNTDOWN (re-synced from feedback_seconds_remaining
+     on every poll — same ticking-between-polls pattern as above)
+  --------------------------------------------------------- */
+  function stopFeedbackCountdown(){
+    clearInterval(feedbackCountdownTimer);
+    feedbackCountdownTimer = null;
+  }
+
+  function startFeedbackCountdown(){
+    stopFeedbackCountdown();
+    feedbackCountdownTimer = setInterval(function(){
+      if (feedbackSecondsLocal > 0){
+        feedbackSecondsLocal--;
+        if (feedbackTimerValue) feedbackTimerValue.textContent = feedbackSecondsLocal;
+      }
+    }, 1000);
+  }
+
+  /* ---------------------------------------------------------
      MAIN RENDER — called on first load AND on every poll
   --------------------------------------------------------- */
   function render(data){
@@ -1158,6 +1342,7 @@ const langManager = new LanguageManager();
     trackingGrid.hidden = data.state === "empty";
     stateActive.hidden = data.state !== "active";
     stateCompleted.hidden = data.state !== "completed";
+    stateFeedback.hidden = data.state !== "feedback";
 
     if (data.state === "active"){
       document.getElementById("activeOrderId").textContent = "Order #" + data.order_number;
@@ -1185,6 +1370,28 @@ const langManager = new LanguageManager();
         launchConfetti();
         showToast("Your order has been delivered. Enjoy your meal!");
       }
+    }
+
+    if (data.state === "feedback"){
+      if (prevState !== "feedback"){
+        // Fresh arrival at this state — reset the form for a clean slate.
+        feedbackSubmitted = false;
+        feedbackRatings = {};
+        feedbackForm.hidden = false;
+        feedbackThankYou.hidden = true;
+        feedbackSubmitBtn.disabled = true;
+        feedbackSubmitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Feedback';
+        feedbackForm.querySelectorAll(".rating-btn").forEach(function(b){
+          b.classList.remove("selected");
+          b.setAttribute("aria-checked", "false");
+        });
+        if (feedbackComment) feedbackComment.value = "";
+      }
+      feedbackSecondsLocal = data.feedback_seconds_remaining;
+      if (feedbackTimerValue) feedbackTimerValue.textContent = feedbackSecondsLocal;
+      if (!feedbackSubmitted) startFeedbackCountdown();
+    } else {
+      stopFeedbackCountdown();
     }
 
     if (data.state !== "empty"){
@@ -1330,6 +1537,79 @@ const langManager = new LanguageManager();
   document.addEventListener("click", function(e){
     if (e.target.closest(".js-request-bill-btn")) requestBill();
   });
+
+  /* ---------------------------------------------------------
+     FEEDBACK — rating buttons + submit (bound once; render()
+     only ever toggles visibility/resets state, never re-binds)
+  --------------------------------------------------------- */
+  function feedbackUpdateSubmitState(){
+    if (!feedbackSubmitBtn) return;
+    var allAnswered = REQUIRED_RATING_KEYS.every(function(key){ return !!feedbackRatings[key]; });
+    feedbackSubmitBtn.disabled = !allAnswered;
+  }
+
+  if (feedbackForm){
+    feedbackForm.querySelectorAll(".rating-group").forEach(function(group){
+      var key = group.dataset.ratingKey;
+      var buttons = Array.prototype.slice.call(group.querySelectorAll(".rating-btn"));
+      buttons.forEach(function(btn){
+        btn.addEventListener("click", function(){
+          feedbackRatings[key] = parseInt(btn.dataset.value, 10);
+          buttons.forEach(function(b){
+            var selected = b === btn;
+            b.classList.toggle("selected", selected);
+            b.setAttribute("aria-checked", selected ? "true" : "false");
+          });
+          feedbackUpdateSubmitState();
+        });
+      });
+    });
+
+    feedbackForm.addEventListener("submit", function(e){
+      e.preventDefault();
+      if (feedbackSubmitBtn.disabled || feedbackSubmitted) return;
+
+      var payload = {};
+      REQUIRED_RATING_KEYS.forEach(function(key){ payload[key] = feedbackRatings[key]; });
+      if (feedbackRatings.value_rating) payload.value_rating = feedbackRatings.value_rating;
+      payload.comment = feedbackComment ? feedbackComment.value.trim() : "";
+
+      var originalHTML = feedbackSubmitBtn.innerHTML;
+      feedbackSubmitBtn.disabled = true;
+      feedbackSubmitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting&hellip;';
+
+      fetch(SUBMIT_FEEDBACK_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": CSRF_TOKEN,
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify(payload),
+      })
+        .then(function(res){
+          return res.json().then(function(data){ return { ok: res.ok, data: data }; });
+        })
+        .then(function(result){
+          if (result.ok && result.data && result.data.success){
+            feedbackSubmitted = true;
+            stopFeedbackCountdown();
+            feedbackForm.hidden = true;
+            if (feedbackThankYou) feedbackThankYou.hidden = false;
+            showToast("Thanks for your feedback!");
+          } else {
+            feedbackSubmitBtn.disabled = false;
+            feedbackSubmitBtn.innerHTML = originalHTML;
+            showToast((result.data && result.data.error) || "Could not submit your feedback.");
+          }
+        })
+        .catch(function(){
+          feedbackSubmitBtn.disabled = false;
+          feedbackSubmitBtn.innerHTML = originalHTML;
+          showToast("Network error — please try again.");
+        });
+    });
+  }
 
   /* ---------------------------------------------------------
      RIPPLE EFFECT

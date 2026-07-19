@@ -523,6 +523,11 @@ ul{ margin:0; padding:0; list-style:none; }
   transition:color .2s var(--ease);
 }
 .voice-btn:hover{ color:var(--color-orange); }
+.voice-btn.listening{ color:var(--color-orange); animation:voicePulse 1.1s ease-in-out infinite; }
+@keyframes voicePulse{
+  0%,100%{ transform:scale(1); opacity:1; }
+  50%{ transform:scale(1.18); opacity:.65; }
+}
 .filter-btn{
   flex-shrink:0;
   width:46px;
@@ -1863,6 +1868,46 @@ document.addEventListener('DOMContentLoaded', function() {
 // actually translating the page. app.js and this file intentionally do
 // NOT duplicate any of that logic.
 const langManager = new LanguageManager();
+
+// language.js falls back to a free, unofficial, key-less Google endpoint
+// with "no SLA" (its own docs say so) — it can be slow, throttled, or
+// blocked outright by ad-blockers/privacy extensions that filter
+// googleapis.com. Pre-seeding its cache with the core, always-visible UI
+// text means switching languages feels instant and reliable for the
+// chrome a user notices immediately, with zero network dependency.
+// Dynamic content (food names/descriptions from the database) still
+// falls back to the live API, same as before.
+(function seedCoreTranslations() {
+  var CORE_STRINGS = {
+    'Menu':          { ne: 'मेनु',                 hi: 'मेनू',              zh: '菜单',   es: 'Menú' },
+    'Orders':        { ne: 'अर्डरहरू',              hi: 'ऑर्डर',             zh: '订单',   es: 'Pedidos' },
+    'Cart':          { ne: 'कार्ट',                 hi: 'कार्ट',             zh: '购物车', es: 'Carrito' },
+    'All':           { ne: 'सबै',                   hi: 'सभी',               zh: '全部',   es: 'Todo' },
+    "Today's Menu":  { ne: 'आजको मेनु',             hi: 'आज का मेनू',        zh: '今日菜单', es: 'Menú de Hoy' },
+    'Add':           { ne: 'थप्नुहोस्',              hi: 'जोड़ें',            zh: '添加',   es: 'Añadir' },
+    'View Details':  { ne: 'विवरण हेर्नुहोस्',        hi: 'विवरण देखें',       zh: '查看详情', es: 'Ver Detalles' },
+    'Add to Cart':   { ne: 'कार्टमा थप्नुहोस्',       hi: 'कार्ट में जोड़ें',   zh: '加入购物车', es: 'Añadir al Carrito' },
+    'Bestseller':    { ne: 'उत्कृष्ट बिक्री',         hi: 'बेस्टसेलर',         zh: '畅销',   es: 'Más Vendido' },
+    "Chef's Choice": { ne: 'सेफको छनोट',             hi: 'शेफ की पसंद',       zh: '主厨推荐', es: 'Elección del Chef' },
+    'New':           { ne: 'नयाँ',                  hi: 'नया',               zh: '新品',   es: 'Nuevo' },
+    'Ingredients':   { ne: 'सामग्रीहरू',             hi: 'सामग्री',           zh: '配料',   es: 'Ingredientes' },
+    'You might also like': { ne: 'तपाईंलाई यो पनि मन पर्न सक्छ', hi: 'आपको यह भी पसंद आ सकता है', zh: '您可能还喜欢', es: 'También te puede gustar' },
+    'No dishes found': { ne: 'कुनै परिकार फेला परेन', hi: 'कोई व्यंजन नहीं मिला', zh: '未找到菜品', es: 'No se encontraron platos' },
+    'Try another search term or category.': {
+      ne: 'अर्को खोज शब्द वा श्रेणी प्रयास गर्नुहोस्।',
+      hi: 'किसी अन्य खोज शब्द या श्रेणी का प्रयास करें।',
+      zh: '请尝试其他搜索词或分类。',
+      es: 'Intenta otro término de búsqueda o categoría.',
+    },
+  };
+
+  Object.keys(CORE_STRINGS).forEach(function (english) {
+    var translations = CORE_STRINGS[english];
+    Object.keys(translations).forEach(function (lang) {
+      langManager.cache.set(lang + '::' + english, translations[lang]);
+    });
+  });
+})();
 
 document.addEventListener('DOMContentLoaded', function () {
 

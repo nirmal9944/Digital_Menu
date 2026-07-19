@@ -14,6 +14,7 @@ from .models import (
     Order,
     OrderItem,
     Bill,
+    Feedback,
 )
 
 admin.site.register(RestaurantDetail)
@@ -100,3 +101,20 @@ class QuickRequestAdmin(admin.ModelAdmin):
     @admin.display(description='Table')
     def table_number(self, obj):
         return obj.table_number
+
+
+# ---------------------------------------------------------------------------
+# CUSTOMER FEEDBACK
+# ---------------------------------------------------------------------------
+
+@admin.register(Feedback)
+class FeedbackAdmin(admin.ModelAdmin):
+    list_display = (
+        'table_number', 'overall_rating', 'food_rating', 'accuracy_rating',
+        'speed_rating', 'qr_system_rating', 'value_rating', 'submitted_at',
+    )
+    list_filter = ('table_number', 'overall_rating')
+    search_fields = ('comment', 'table_number')
+    search_help_text = 'Search by comment text or table number'
+    date_hierarchy = 'submitted_at'
+    readonly_fields = ('bill', 'table_number', 'submitted_at')

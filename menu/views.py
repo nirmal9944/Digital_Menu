@@ -18,7 +18,13 @@ from .models import (
     VATSetting,
     QuickItem,
     QuickRequest,
+    Feedback,
 )
+
+# How long the "rate your visit" prompt stays up on order_tracking.html
+# after a bill is marked paid, before the page lazily reverts to the empty
+# state on its own (see the end of _build_tracking_data below).
+FEEDBACK_WINDOW_SECONDS = 60
 
 
 def landing(request, table_number):
@@ -97,6 +103,29 @@ STATUS_DESCRIPTIONS = {
 }
 
 
+def _find_relevant_session(table):
+    """
+    The session order_tracking.html's state is about: prefer the currently
+    active session (if it actually has a real order in it), otherwise fall
+    back to the most recent session — active or closed — that has orders,
+    so a delivered/paid order keeps showing instead of disappearing once
+    the session is closed. Shared by _build_tracking_data and
+    submit_feedback so they can never resolve to different sessions.
+    """
+    active_session = TableSession.objects.filter(
+        table=table, status='active'
+    ).order_by('-started_at').first()
+
+    if active_session and active_session.orders.exclude(status='cancelled').exists():
+        return active_session
+
+    for candidate in TableSession.objects.filter(table=table).order_by('-started_at'):
+        if candidate.orders.exclude(status='cancelled').exists():
+            return candidate
+
+    return None
+
+
 def _build_tracking_data(table_number):
     """
     Single source of truth for the order-tracking state of one table.
@@ -131,23 +160,7 @@ def _build_tracking_data(table_number):
     if not has_any_order:
         return data
 
-    # Prefer the currently active session — but only if it actually has a
-    # real order in it. Otherwise, fall back to the most recent session
-    # (active or closed) that has orders, so a delivered order keeps
-    # showing instead of disappearing once the session is closed.
-    session = None
-
-    active_session = TableSession.objects.filter(
-        table=table, status='active'
-    ).order_by('-started_at').first()
-
-    if active_session and active_session.orders.exclude(status='cancelled').exists():
-        session = active_session
-    else:
-        for candidate in TableSession.objects.filter(table=table).order_by('-started_at'):
-            if candidate.orders.exclude(status='cancelled').exists():
-                session = candidate
-                break
+    session = _find_relevant_session(table)
 
     if not session:
         return data
@@ -268,6 +281,25 @@ def _build_tracking_data(table_number):
         'bill_id': bill.id if bill else None,
         'payment_status': bill.payment_status if bill else None,
     })
+
+    # Once paid, hand the page over to the feedback prompt for a short
+    # window, then lazily revert to the empty state — evaluated fresh on
+    # whichever request lands next (a poll, or a brand new page load), so
+    # it resolves correctly even if the customer closed the tab and never
+    # comes back. Nothing about table/session availability depends on this;
+    # billing.views.set_bill_status already frees the table immediately.
+    if bill and bill.payment_status == 'paid' and bill.paid_at:
+        feedback_exists = Feedback.objects.filter(bill=bill).exists()
+        seconds_since_paid = (timezone.now() - bill.paid_at).total_seconds()
+        if feedback_exists or seconds_since_paid > FEEDBACK_WINDOW_SECONDS:
+            data['state'] = 'empty'
+        else:
+            data['state'] = 'feedback'
+            data['feedback_seconds_remaining'] = max(
+                0, int(FEEDBACK_WINDOW_SECONDS - seconds_since_paid)
+            )
+            data['feedback_bill_id'] = bill.id
+
     return data
 
 
@@ -577,3 +609,77 @@ def quick_order(request, table_number):
         'item_name': item.name,
         'is_free': item.is_free,
     })
+
+
+# ---------------------------------------------------------------------------
+# CUSTOMER FEEDBACK  (shown on order_tracking.html once a bill is paid —
+# see the 'feedback' state appended at the end of _build_tracking_data)
+# ---------------------------------------------------------------------------
+
+@require_POST
+def submit_feedback(request, table_number):
+    """
+    Customer submits their post-payment feedback.
+
+    The Bill is resolved server-side from table_number via the exact same
+    _find_relevant_session() the polling endpoint used to decide this table
+    should be shown the feedback prompt in the first place — never trusts a
+    client-supplied bill id, so there's no way to submit feedback against
+    the wrong table's bill.
+
+    Duplicate submits are a no-op success (get_or_create), not an error, so
+    a double-tap on Submit — or the 60s window and a real submit racing
+    each other — can't fail confusingly.
+    """
+    table = RestaurantTable.objects.filter(table_number=table_number).first()
+    if not table:
+        return JsonResponse({'success': False, 'error': 'Table not found.'}, status=404)
+
+    session = _find_relevant_session(table)
+    bill = Bill.objects.filter(session=session).first() if session else None
+
+    if not bill or bill.payment_status != 'paid':
+        return JsonResponse(
+            {'success': False, 'error': 'No paid bill is currently awaiting feedback for this table.'},
+            status=400,
+        )
+
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({'success': False, 'error': 'Could not read your feedback.'}, status=400)
+
+    def _rating(key, required=True):
+        value = payload.get(key)
+        if value in (None, ''):
+            if required:
+                raise ValueError(f'Please rate "{key.replace("_", " ")}".')
+            return None
+        try:
+            value = int(value)
+        except (TypeError, ValueError):
+            raise ValueError(f'"{key}" must be a number.')
+        if not (1 <= value <= 5):
+            raise ValueError(f'"{key}" must be between 1 and 5.')
+        return value
+
+    try:
+        ratings = {
+            'overall_rating':   _rating('overall_rating'),
+            'food_rating':      _rating('food_rating'),
+            'accuracy_rating':  _rating('accuracy_rating'),
+            'speed_rating':     _rating('speed_rating'),
+            'qr_system_rating': _rating('qr_system_rating'),
+            'value_rating':     _rating('value_rating', required=False),
+        }
+    except ValueError as exc:
+        return JsonResponse({'success': False, 'error': str(exc)}, status=400)
+
+    comment = (payload.get('comment') or '').strip()[:2000]
+
+    feedback, created = Feedback.objects.get_or_create(
+        bill=bill,
+        defaults={'table_number': table_number, 'comment': comment, **ratings},
+    )
+
+    return JsonResponse({'success': True, 'created': created, 'feedback_id': feedback.id})

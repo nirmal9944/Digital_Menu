@@ -577,3 +577,51 @@ class Bill(models.Model):
 
         bill.recalculate()
         return bill
+
+
+class Feedback(models.Model):
+    """
+    Post-payment customer feedback. One per Bill — a table session can cover
+    several Orders (via "Add More Items"), but only ever has one Bill, so
+    Bill is the correct 1:1 anchor for "how was this whole visit", not Order.
+    """
+
+    bill = models.OneToOneField(
+        Bill,
+        on_delete=models.CASCADE,
+        related_name='feedback',
+    )
+
+    # Denormalized so admin list/filter doesn't need a join through
+    # bill__session__table for every row.
+    table_number = models.PositiveIntegerField()
+
+    overall_rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+    food_rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+    accuracy_rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+    speed_rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+    qr_system_rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+    value_rating = models.PositiveSmallIntegerField(
+        blank=True, null=True,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        help_text='Optional — "Value for Money" is the one skippable question.',
+    )
+
+    comment = models.TextField(blank=True)
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-submitted_at']
+
+    def __str__(self):
+        return f"Feedback for Bill #{self.bill_id} — Table {self.table_number} ({self.overall_rating}/5)"

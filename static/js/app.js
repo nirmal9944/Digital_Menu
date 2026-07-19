@@ -580,10 +580,93 @@
             });
         });
 
-        /* ---- voice search (placeholder, matches the filter button below) ---- */
+        /* ---- voice search (Web Speech API — real speech-to-text, not a placeholder) ---- */
         var voiceBtn = document.getElementById('voiceSearchBtn');
-        if (voiceBtn) {
-            voiceBtn.addEventListener('click', function() { showToast('Voice search coming soon'); });
+        var SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (voiceBtn && !SpeechRecognitionCtor) {
+            // Be honest about it rather than pretending the mic works —
+            // Firefox and some in-app browsers don't implement this API at all.
+            voiceBtn.addEventListener('click', function() {
+                showToast("Voice search isn't supported in this browser");
+            });
+        } else if (voiceBtn) {
+            var recognition = new SpeechRecognitionCtor();
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+            var isListening = false;
+
+            // Always English, regardless of the UI's display language —
+            // food names in the database (FoodItem.food_name) are stored
+            // in English ("Pizza", "Burger", ...) and the search filter is
+            // a plain substring match against that raw text, so matching
+            // recognition to the UI language would make it mishear English
+            // dish names as soon as someone switched the UI to another
+            // language, even though the thing they're searching is still
+            // English text.
+            recognition.lang = 'en-US';
+
+            recognition.addEventListener('start', function() {
+                isListening = true;
+                voiceBtn.classList.add('listening');
+                voiceBtn.setAttribute('aria-label', 'Listening… tap to stop');
+            });
+
+            recognition.addEventListener('end', function() {
+                isListening = false;
+                voiceBtn.classList.remove('listening');
+                voiceBtn.setAttribute('aria-label', 'Search by voice');
+            });
+
+            recognition.addEventListener('result', function(e) {
+                var transcript = e.results[0][0].transcript;
+                if (searchInput) {
+                    searchInput.value = transcript;
+                    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    searchInput.focus();
+                }
+                showToast('Searching for "' + transcript + '"');
+            });
+
+            recognition.addEventListener('error', function(e) {
+                console.error('Voice search error:', e.error);
+                if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+                    showToast('Microphone access was blocked — allow it in your browser settings to use voice search');
+                } else if (e.error === 'no-speech') {
+                    showToast("Didn't catch that — try again");
+                } else if (e.error === 'network') {
+                    showToast('Voice search needs an internet connection');
+                } else {
+                    showToast('Voice search error (' + e.error + ') — please try again');
+                }
+            });
+
+            voiceBtn.addEventListener('click', function() {
+                if (isListening) { recognition.stop(); return; }
+
+                // The Web Speech API only runs in a secure context (HTTPS,
+                // or the browser's own localhost/127.0.0.1) — if this page
+                // was opened via a LAN IP (e.g. scanned from a phone at
+                // http://192.168.x.x:8000/...), the browser blocks it
+                // entirely and previously this failed with zero feedback.
+                if (window.isSecureContext === false) {
+                    showToast('Voice search needs a secure (HTTPS) connection — not available on this address');
+                    return;
+                }
+
+                try {
+                    recognition.start();
+                } catch (err) {
+                    // start() throws synchronously if called while already
+                    // running, or if the browser refuses for some other
+                    // reason (e.g. no microphone device) — surface it
+                    // instead of silently doing nothing.
+                    if (err && err.name !== 'InvalidStateError') {
+                        console.error('Voice search failed to start:', err);
+                        showToast('Could not start voice search — please try again');
+                    }
+                }
+            });
         }
 
         /* ---- animated search placeholder (idle only — never touches .value) ---- */
