@@ -37,8 +37,11 @@ class OfferInline(admin.TabularInline):
 
 @admin.register(FoodItem)
 class FoodItemAdmin(admin.ModelAdmin):
-    list_display = ('food_name', 'category', 'price', 'current_price', 'is_available', 'is_popular')
-    list_filter = ('category', 'is_available', 'is_popular')
+    list_display = (
+        'food_name', 'category', 'price', 'current_price', 'is_available',
+        'is_popular', 'is_vegetarian', 'is_chef_choice', 'is_new', 'rating', 'calories',
+    )
+    list_filter = ('category', 'is_available', 'is_popular', 'is_vegetarian', 'is_chef_choice', 'is_new')
     search_fields = ('food_name',)
     inlines = [OfferInline]
 

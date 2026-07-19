@@ -29,7 +29,6 @@
 
     var CART_KEY = 'flavoria_cart_items_v1';
     var FAV_KEY = 'flavoria_favorites';
-    var LANG_KEY = 'flavoria_selected_language';
     var NOTE_KEY = 'flavoria_order_note'; /* NEW: special instructions key */
 
     var ICON_MAP = {
@@ -79,6 +78,10 @@
             toastEl.classList.remove('show');
         }, 2200);
     }
+
+    // Exposed so a template's own inline <script> (which can't see this
+    // closure) can reuse the same #toast element instead of duplicating it.
+    window.FlavoriaToast = showToast;
 
     /* --------------------------------------------------------------------
        RIPPLE — delegated so it works on dynamically created buttons too
@@ -137,7 +140,19 @@
             return this.read().reduce(function(sum, it) { return sum + it.price * it.quantity; }, 0);
         },
 
-        // food: { id, name, price, note, icon }
+        // Slowest item's prep time, same "whole order is only as fast as its
+        // slowest dish" logic the kitchen/order-tracking backend already
+        // uses. Returns 0 if no item in the cart has a known prep time
+        // (e.g. everything was added before this field existed) — callers
+        // should treat 0 as "unknown", not "instant".
+        maxPrepTime: function() {
+            return this.read().reduce(function(max, it) { return Math.max(max, Number(it.prepTime) || 0); }, 0);
+        },
+
+        // food: { id, name, price, note, icon, image, category, isVeg, prepTime, desc }
+        // image/category/isVeg/prepTime/desc are optional display metadata for
+        // the cart page — items added before this field existed just won't
+        // have them, and the cart UI falls back gracefully when absent.
         add: function(food) {
             var items = this.read();
             var note = food.note || '';
@@ -155,6 +170,11 @@
                     quantity: 1,
                     note: note,
                     icon: food.icon || 'fa-utensils',
+                    image: food.image || '',
+                    category: food.category || '',
+                    isVeg: typeof food.isVeg === 'boolean' ? food.isVeg : null,
+                    prepTime: Number(food.prepTime) || 0,
+                    desc: food.desc || '',
                 });
             }
             this.write(items);
@@ -223,6 +243,12 @@
         // Initial badge refresh
         refreshCartBadge();
 
+        /* ---- quantity helpers (shared by cards, modal, floating pill) ---- */
+        function getQty(id) {
+            var item = Cart.read().find(function(it) { return String(it.id) === String(id); });
+            return item ? item.quantity : 0;
+        }
+
         function syncFavorites() {
             foodCards.forEach(function(card) {
                 var id = card.dataset.id;
@@ -289,6 +315,11 @@
                 name: card.dataset.name,
                 price: card.dataset.price,
                 icon: ICON_MAP[card.dataset.category] || 'fa-utensils',
+                image: card.dataset.image || '',
+                category: card.dataset.categoryName || '',
+                isVeg: card.dataset.veg === '1' ? true : (card.dataset.veg === '0' ? false : null),
+                prepTime: parseInt(card.dataset.duration, 10) || 0,
+                desc: card.dataset.desc || '',
             });
             showToast(card.dataset.name + ' added to cart');
 
@@ -308,6 +339,64 @@
                 addToCart(btn.closest('.food-card'), btn);
             });
         });
+
+        /* ---- per-card quantity stepper (shown once an item is in the cart) ---- */
+        foodCards.forEach(function(card) {
+            var minusBtn = card.querySelector('.qty-minus');
+            var plusBtn = card.querySelector('.qty-plus');
+            if (minusBtn) {
+                minusBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var id = card.dataset.id;
+                    Cart.setQuantity(id, getQty(id) - 1);
+                });
+            }
+            if (plusBtn) {
+                plusBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    addToCart(card, null);
+                });
+            }
+        });
+
+        /* ---- floating cart pill + card/modal quantity sync ---- */
+        var cartPill = document.getElementById('cartPill');
+        var cartPillCount = document.getElementById('cartPillCount');
+        var cartPillItems = document.getElementById('cartPillItems');
+        var cartPillTotal = document.getElementById('cartPillTotal');
+
+        function renderCardQuantities() {
+            foodCards.forEach(function(card) {
+                var qty = getQty(card.dataset.id);
+                card.classList.toggle('in-cart', qty > 0);
+                var qtyEl = card.querySelector('.qty-value');
+                if (qtyEl) qtyEl.textContent = qty;
+            });
+        }
+
+        function renderCartPill() {
+            if (!cartPill) return;
+            var count = Cart.count();
+            var prevCount = cartPill.dataset.prevCount || '0';
+            if (cartPillCount) cartPillCount.textContent = count;
+            if (cartPillItems) cartPillItems.textContent = count + (count === 1 ? ' Item' : ' Items');
+            if (cartPillTotal) cartPillTotal.textContent = formatRs(Cart.subtotal());
+            cartPill.classList.toggle('show', count > 0);
+            if (count > 0 && String(count) !== prevCount) {
+                cartPill.classList.remove('bump');
+                void cartPill.offsetWidth; /* restart the animation */
+                cartPill.classList.add('bump');
+            }
+            cartPill.dataset.prevCount = String(count);
+        }
+
+        function syncCartUI() {
+            renderCardQuantities();
+            renderCartPill();
+            renderModalQty();
+        }
+
+        document.addEventListener('cart:changed', syncCartUI);
 
         /* ---- wishlist toggle ---- */
         document.querySelectorAll('.wishlist-btn').forEach(function(btn) {
@@ -341,7 +430,68 @@
         var modalPrice = document.getElementById('modalPrice');
         var modalImage = document.getElementById('modalImage');
         var modalAddBtn = document.getElementById('modalAddBtn');
+        var modalQtyStepper = document.getElementById('modalQtyStepper');
+        var modalQtyValue = document.getElementById('modalQtyValue');
+        var modalIngredients = document.getElementById('modalIngredients');
+        var modalIngredientsText = document.getElementById('modalIngredientsText');
+        var modalRelated = document.getElementById('modalRelated');
+        var modalRelatedRow = document.getElementById('modalRelatedRow');
         var currentModalCard = null;
+
+        function renderModalQty() {
+            if (!currentModalCard || !modalQtyStepper || !modalAddBtn) return;
+            var qty = getQty(currentModalCard.dataset.id);
+            modalAddBtn.style.display = qty > 0 ? 'none' : '';
+            modalQtyStepper.style.display = qty > 0 ? 'flex' : 'none';
+            if (modalQtyValue) modalQtyValue.textContent = qty;
+        }
+
+        function buildRelatedCardHtml(relatedCard) {
+            var img = relatedCard.dataset.image;
+            var imgHtml = img ?
+                '<img src="' + escapeHtml(img) + '" alt="" loading="lazy">' :
+                '<i class="fa-solid ' + (ICON_MAP[relatedCard.dataset.category] || 'fa-utensils') + '" aria-hidden="true"></i>';
+            return (
+                '<button type="button" class="related-card" data-id="' + escapeHtml(relatedCard.dataset.id) + '">' +
+                '<span class="related-img">' + imgHtml + '</span>' +
+                '<span class="related-name">' + escapeHtml(relatedCard.dataset.name) + '</span>' +
+                '<span class="related-price">' + formatRs(relatedCard.dataset.price) + '</span>' +
+                '</button>'
+            );
+        }
+
+        function renderRelated(card) {
+            if (!modalRelated || !modalRelatedRow) return;
+            var related = foodCards.filter(function(c) {
+                return c !== card && c.dataset.category === card.dataset.category;
+            }).slice(0, 4);
+
+            if (!related.length) {
+                modalRelated.hidden = true;
+                return;
+            }
+            modalRelatedRow.innerHTML = related.map(buildRelatedCardHtml).join('');
+            modalRelatedRow.querySelectorAll('.related-card').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var targetCard = foodCards.find(function(c) { return c.dataset.id === btn.dataset.id; });
+                    if (targetCard) openFoodModal(targetCard);
+                });
+            });
+            modalRelated.hidden = false;
+        }
+
+        function renderIngredients(text) {
+            if (!modalIngredients || !modalIngredientsText) return;
+            var parts = (text || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+            if (!parts.length) {
+                modalIngredients.hidden = true;
+                return;
+            }
+            modalIngredientsText.innerHTML = parts.map(function(p) {
+                return '<span class="ingredient-pill">' + escapeHtml(p) + '</span>';
+            }).join('');
+            modalIngredients.hidden = false;
+        }
 
         function openFoodModal(card) {
             if (!modalOverlay) return;
@@ -349,19 +499,28 @@
             modalTitle.textContent = card.dataset.name;
             modalDesc.textContent = card.dataset.desc;
             modalPrice.textContent = formatRs(card.dataset.price);
-            modalMeta.innerHTML =
-                '<span>' + escapeHtml(card.dataset.rating) + '</span>' +
-                '<span class="stars">' +
-                '<i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>' +
-                '<i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>' +
-                '<i class="fa-solid fa-star"></i>' +
-                '</span>' +
-                '<span class="reviews">(' + escapeHtml(card.dataset.reviews) + ')</span>' +
-                '<span class="meta-sep">|</span>' +
-                '<span class="duration"><i class="fa-regular fa-clock" aria-hidden="true"></i> ' +
-                escapeHtml(card.dataset.duration) + '</span>';
-            var iconClass = ICON_MAP[card.dataset.category] || 'fa-utensils';
-            modalImage.innerHTML = '<i class="fa-solid ' + iconClass + '"></i>';
+
+            var metaParts = [];
+            if (card.dataset.rating) {
+                metaParts.push('<span class="food-rating"><i class="fa-solid fa-star" aria-hidden="true"></i> ' + escapeHtml(card.dataset.rating) + '</span>');
+            }
+            if (card.dataset.calories) {
+                metaParts.push('<span class="food-calories"><i class="fa-solid fa-fire-flame-simple" aria-hidden="true"></i> ' + escapeHtml(card.dataset.calories) + ' kcal</span>');
+            }
+            metaParts.push('<span class="duration"><i class="fa-regular fa-clock" aria-hidden="true"></i> ' + escapeHtml(card.dataset.duration) + '</span>');
+            modalMeta.innerHTML = metaParts.join('');
+
+            var imgUrl = card.dataset.image;
+            if (imgUrl) {
+                modalImage.innerHTML = '<img src="' + escapeHtml(imgUrl) + '" alt="' + escapeHtml(card.dataset.name) + '">';
+            } else {
+                var iconClass = ICON_MAP[card.dataset.category] || 'fa-utensils';
+                modalImage.innerHTML = '<i class="fa-solid ' + iconClass + '"></i>';
+            }
+
+            renderIngredients(card.dataset.ingredients);
+            renderRelated(card);
+            renderModalQty();
 
             modalOverlay.classList.add('open');
             document.body.style.overflow = 'hidden';
@@ -393,8 +552,24 @@
         if (modalAddBtn) {
             modalAddBtn.addEventListener('click', function() {
                 if (currentModalCard) addToCart(currentModalCard, null);
-                closeFoodModal();
             });
+        }
+
+        if (modalQtyStepper) {
+            var modalMinusBtn = modalQtyStepper.querySelector('.qty-minus');
+            var modalPlusBtn = modalQtyStepper.querySelector('.qty-plus');
+            if (modalMinusBtn) {
+                modalMinusBtn.addEventListener('click', function() {
+                    if (!currentModalCard) return;
+                    var id = currentModalCard.dataset.id;
+                    Cart.setQuantity(id, getQty(id) - 1);
+                });
+            }
+            if (modalPlusBtn) {
+                modalPlusBtn.addEventListener('click', function() {
+                    if (currentModalCard) addToCart(currentModalCard, null);
+                });
+            }
         }
 
         /* ---- bottom nav ---- */
@@ -405,55 +580,21 @@
             });
         });
 
-        var ordersBtn = document.getElementById('ordersBtn');
-        if (ordersBtn) {
-            ordersBtn.addEventListener('click', function() {
-                window.location.href = PAGE.orderTrackingUrl;
-            });
+        /* ---- voice search (placeholder, matches the filter button below) ---- */
+        var voiceBtn = document.getElementById('voiceSearchBtn');
+        if (voiceBtn) {
+            voiceBtn.addEventListener('click', function() { showToast('Voice search coming soon'); });
         }
 
-        var cartBtn = document.getElementById('cartBtn');
-        if (cartBtn) {
-            cartBtn.addEventListener('click', function() {
-                window.location.href = document.body.dataset.cartUrl || '#';
-            });
-        }
-
-        /* ---- language selector ---- */
-        var langWrap = document.getElementById('langWrap');
-        var langBtn = document.getElementById('langBtn');
-        var langLabel = document.getElementById('langLabel');
-
-        if (langWrap && langBtn && langLabel) {
-            var savedLang = localStorage.getItem(LANG_KEY);
-            if (savedLang) {
-                var match = document.querySelector('.lang-option[data-lang="' + savedLang + '"]');
-                if (match) {
-                    document.querySelectorAll('.lang-option').forEach(function(o) { o.classList.remove('active'); });
-                    match.classList.add('active');
-                    langLabel.textContent = match.dataset.label;
-                }
-            }
-
-            langBtn.addEventListener('click', function() {
-                var isOpen = langWrap.classList.toggle('open');
-                langBtn.setAttribute('aria-expanded', String(isOpen));
-            });
-
-            document.querySelectorAll('.lang-option').forEach(function(opt) {
-                opt.addEventListener('click', function() {
-                    document.querySelectorAll('.lang-option').forEach(function(o) { o.classList.remove('active'); });
-                    opt.classList.add('active');
-                    langLabel.textContent = opt.dataset.label;
-                    localStorage.setItem(LANG_KEY, opt.dataset.lang);
-                    langWrap.classList.remove('open');
-                    langBtn.setAttribute('aria-expanded', 'false');
-                });
-            });
-
-            document.addEventListener('click', function(e) {
-                if (!langWrap.contains(e.target)) langWrap.classList.remove('open');
-            });
+        /* ---- animated search placeholder (idle only — never touches .value) ---- */
+        if (searchInput) {
+            var placeholders = ['Search foods...', 'Try "Pizza"', 'Try "Burger"', 'Try "Momo"', 'Craving something?'];
+            var placeholderIdx = 0;
+            setInterval(function() {
+                if (document.activeElement === searchInput || searchInput.value) return;
+                placeholderIdx = (placeholderIdx + 1) % placeholders.length;
+                searchInput.setAttribute('placeholder', placeholders[placeholderIdx]);
+            }, 2600);
         }
 
         /* ---- filter button (placeholder) ---- */
@@ -461,6 +602,9 @@
         if (filterBtn) {
             filterBtn.addEventListener('click', function() { showToast('Filters coming soon'); });
         }
+
+        /* ---- initial paint of quantity steppers + floating cart pill ---- */
+        syncCartUI();
     }
 
     /* ======================================================================
@@ -585,16 +729,42 @@
                 '</span>' :
                 '<span></span>';
 
+            var imageHtml = item.image ?
+                '<img src="' + escapeHtml(item.image) + '" alt="" loading="lazy">' :
+                '<i class="fa-solid ' + (item.icon || 'fa-utensils') + '"></i>';
+
+            var badgesHtml = '';
+            if (typeof item.isVeg === 'boolean' || item.category) {
+                badgesHtml = '<div class="item-badges">';
+                if (typeof item.isVeg === 'boolean') {
+                    badgesHtml += '<span class="veg-indicator ' + (item.isVeg ? 'veg' : 'nonveg') + '" ' +
+                        'role="img" aria-label="' + (item.isVeg ? 'Vegetarian' : 'Non-vegetarian') + '" ' +
+                        'title="' + (item.isVeg ? 'Vegetarian' : 'Non-vegetarian') + '"><span class="veg-dot"></span></span>';
+                }
+                if (item.category) {
+                    badgesHtml += '<span class="category-badge">' + escapeHtml(item.category) + '</span>';
+                }
+                badgesHtml += '</div>';
+            }
+
+            var descHtml = item.desc ? '<p class="item-desc">' + escapeHtml(item.desc) + '</p>' : '';
+            var prepHtml = item.prepTime ?
+                '<span class="item-prep"><i class="fa-regular fa-clock" aria-hidden="true"></i> ' + item.prepTime + ' min</span>' :
+                '';
+
             return (
                 '<article class="cart-item" data-id="' + escapeHtml(item.id) + '">' +
                 '<div class="item-main">' +
                 '<div class="item-image" aria-hidden="true">' +
-                '<i class="fa-solid ' + (item.icon || 'fa-utensils') + '"></i>' +
+                imageHtml +
                 '</div>' +
                 '<div class="item-body">' +
                 '<div class="item-body-top">' +
                 '<div class="item-title-desc">' +
+                badgesHtml +
                 '<h3 class="item-title">' + escapeHtml(item.name) + '</h3>' +
+                descHtml +
+                prepHtml +
                 '</div>' +
                 '<div class="item-price-delete">' +
                 '<span class="item-price">' + formatRs(lineTotal) + '</span>' +
@@ -650,6 +820,15 @@
             if (subtotalEl) subtotalEl.textContent = formatted;
             if (totalEl) totalEl.textContent = formatted;
             if (stickyTotalEl) stickyTotalEl.textContent = formatted;
+
+            /* Real prep time, not a hardcoded placeholder — "unknown" (0)
+               only happens if every item in the cart predates this field. */
+            var maxPrep = Cart.maxPrepTime();
+            var prepText = maxPrep > 0 ? ('~' + maxPrep + ' min') : 'Varies by dish';
+            var prepTimeEl = document.getElementById('prepTimeValue');
+            var stickyPrepTimeEl = document.getElementById('stickyPrepTime');
+            if (prepTimeEl) prepTimeEl.textContent = prepText;
+            if (stickyPrepTimeEl) stickyPrepTimeEl.textContent = prepText;
 
             if (statusTitle) {
                 var count = items.reduce(function(s, it) { return s + it.quantity; }, 0);

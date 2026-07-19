@@ -1,5 +1,6 @@
 import json
 
+from django.db.models import Max, Min
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
@@ -34,6 +35,18 @@ def landing(request, table_number):
 
 def menu_page(request, table_number):
 
+    foods = FoodItem.objects.select_related(
+        'category'
+    ).prefetch_related(
+        'offers'
+    ).filter(
+        is_available=True
+    )
+
+    # Real min/max prep time across today's available dishes, shown as an
+    # "Estimated prep time" chip in the header — not a hardcoded guess.
+    prep_time_range = foods.aggregate(min_time=Min('preparation_time'), max_time=Max('preparation_time'))
+
     context = {
         'table_number': table_number,
 
@@ -43,13 +56,7 @@ def menu_page(request, table_number):
             is_active=True
         ),
 
-        'foods': FoodItem.objects.select_related(
-            'category'
-        ).prefetch_related(
-            'offers'
-        ).filter(
-            is_available=True
-        ),
+        'foods': foods,
 
         'popular_foods': FoodItem.objects.select_related(
             'category'
@@ -59,6 +66,9 @@ def menu_page(request, table_number):
         ),
 
         'quick_items': QuickItem.objects.filter(is_active=True),
+
+        'prep_time_min': prep_time_range['min_time'],
+        'prep_time_max': prep_time_range['max_time'],
     }
 
     return render(request, 'menu/menu.html', context)

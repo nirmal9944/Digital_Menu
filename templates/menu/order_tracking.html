@@ -158,16 +158,25 @@
 
   .bottom-nav{
     position:fixed;
-    bottom:0; left:0; right:0;
-    background:var(--color-surface);
+    left:0;
+    right:0;
+    margin-inline:auto;
+    bottom:calc(14px + env(safe-area-inset-bottom, 0px));
+    width:92%;
+    max-width:460px;
     display:flex;
-    align-items:center;
+    align-items:stretch;
     justify-content:space-around;
-    box-shadow:0 -6px 24px rgba(43,36,32,.07);
-    border-top:1px solid var(--color-border);
+    gap:2px;
+    background:rgba(255,255,255,.82);
+    backdrop-filter:blur(18px);
+    -webkit-backdrop-filter:blur(18px);
+    border:1px solid rgba(255,255,255,.7);
+    border-radius:28px;
+    box-shadow:0 15px 45px rgba(0,0,0,.12);
     z-index:110;
-    padding:0 0 max(10px, env(safe-area-inset-bottom));
-    height:var(--nav-h);
+    padding:6px;
+    animation:fadeSlideIn .5s var(--ease) both;
   }
 
   /* =========================================================
@@ -220,26 +229,37 @@
      5. BOTTOM NAV
   ========================================================= */
   .nav-item{
-    display:flex; flex-direction:column; align-items:center; gap:5px;
+    flex:1;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
     font-size:11px; font-weight:500; color:var(--color-text-tertiary);
-    position:relative; width:72px; min-height:44px; padding:4px 0;
-    transition:color .2s ease, transform .15s ease;
+    position:relative; min-height:56px; padding:6px 4px;
+    border-radius:18px;
+    transition:color .2s ease, background .25s var(--ease), transform .15s ease, box-shadow .25s ease;
   }
-  .nav-item i{ font-size:19px; }
+  .nav-item i{ font-size:19px; transition:transform .25s ease; }
+  .nav-item:hover{ color:var(--color-primary-dark); }
   .nav-item:active{ transform:scale(.93); }
-  .nav-item.active{ color:var(--color-primary); font-weight:600; }
+  .nav-item.active{
+    color:var(--color-primary);
+    font-weight:700;
+    background:var(--color-primary-light);
+    box-shadow:0 6px 16px rgba(239,111,31,.22);
+  }
   .nav-item.active i{ animation:navPop .35s ease; }
 
-  .nav-cart-wrap{ position:relative; }
+  .nav-cart-wrap{ position:relative; display:inline-flex; }
   .nav-badge{
     position:absolute; top:-6px; right:-9px;
     min-width:16px; height:16px; padding:0 4px;
     border-radius:var(--radius-pill);
     background:var(--color-primary); color:#fff;
     font-size:9.5px; font-weight:700;
-    display:flex; align-items:center; justify-content:center;
+    display:none; align-items:center; justify-content:center;
     box-shadow:0 2px 6px rgba(239,111,31,.5);
   }
+  .nav-badge.show{ display:flex; }
+  .nav-badge.bump{ animation:navBadgeBounce .4s ease; }
+  @keyframes navBadgeBounce{ 0%,100%{ transform:scale(1); } 40%{ transform:scale(1.35); } }
 
   /* =========================================================
      6. SHARED COMPONENTS
@@ -355,6 +375,7 @@
   .time-card-title{ font-size:12px; font-weight:600; color:var(--color-primary-darker); }
   .time-card-value{ font-size:var(--text-3xl); font-weight:800; color:var(--color-primary); letter-spacing:.5px; margin:3px 0 4px; animation:pulseTimer 2s ease-in-out infinite; font-variant-numeric:tabular-nums; }
   .time-card-desc{ font-size:var(--text-xs); color:var(--color-text-secondary); }
+  .time-card-kitchen{ font-size:11px; font-weight:600; color:var(--color-primary-dark); opacity:.85; margin-top:6px; }
   .time-card-art{ width:64px; height:64px; border-radius:50%; background:var(--color-surface); display:flex; align-items:center; justify-content:center; color:var(--color-primary); font-size:24px; flex-shrink:0; position:relative; box-shadow:var(--shadow-sm); }
   .steam{ position:absolute; top:-6px; width:3px; height:10px; border-radius:3px; background:var(--color-primary-border); animation:steamRise 1.8s ease-in-out infinite; }
   .steam-1{ left:22px; animation-delay:0s; }
@@ -457,7 +478,7 @@
      12. LIVE STATUS PILL + TOAST
   ========================================================= */
   .live-pill{
-    position:fixed; bottom:calc(var(--nav-h) + 16px); left:50%; transform:translateX(-50%);
+    position:fixed; bottom:calc(var(--nav-h) + 16px); left:0; right:0; margin-inline:auto; width:fit-content;
     display:flex; align-items:center; gap:7px;
     background:rgba(43,36,32,.88); color:#fff;
     font-size:11px; font-weight:600; padding:8px 14px; border-radius:var(--radius-pill);
@@ -467,7 +488,7 @@
   .live-dot{ width:7px; height:7px; border-radius:50%; background:var(--color-green); animation:livePulse 1.6s ease-in-out infinite; }
 
   .toast{
-    position:fixed; bottom:calc(var(--nav-h) + 14px); left:50%; transform:translate(-50%, 16px);
+    position:fixed; bottom:calc(var(--nav-h) + 14px); left:0; right:0; margin-inline:auto; transform:translateY(16px);
     max-width:380px; width:88%;
     background:var(--color-text-primary); color:#fff;
     font-size:var(--text-sm); font-weight:500;
@@ -477,7 +498,7 @@
     transition:opacity .3s ease, transform .3s ease;
     box-shadow:var(--shadow-lg);
   }
-  .toast.is-visible{ opacity:1; transform:translate(-50%, 0); }
+  .toast.is-visible{ opacity:1; transform:translateY(0); }
 
   /* =========================================================
      13. ANIMATIONS
@@ -670,6 +691,7 @@
                 <p class="time-card-title" id="activeStatusLabel">Status</p>
                 <p class="time-card-value" id="timerDisplay" aria-live="polite">--:--</p>
                 <p class="time-card-desc" id="activeStatusDesc">We're preparing your delicious meal.</p>
+                <p class="time-card-kitchen"><i class="fa-solid fa-kitchen-set" aria-hidden="true"></i> Prepared with care by our kitchen team</p>
               </div>
               <div class="time-card-art">
                 <i class="fa-solid fa-kitchen-set"></i>
@@ -787,7 +809,10 @@
       <span>Orders</span>
     </a>
     <a class="nav-item" href="{% url 'cart' table_number=table_number %}">
-      <span class="nav-cart-wrap"><i class="fa-solid fa-cart-shopping"></i></span>
+      <span class="nav-cart-wrap">
+        <i class="fa-solid fa-cart-shopping"></i>
+        <span class="nav-badge" id="navCartBadge" aria-hidden="true"></span>
+      </span>
       <span>Cart</span>
     </a>
   </nav>
@@ -878,6 +903,44 @@ const langManager = new LanguageManager();
   window.addEventListener("scroll", function(){
     topShell.classList.toggle("scrolled", window.scrollY > 8);
   }, { passive: true });
+
+  /* ---------------------------------------------------------
+     BOTTOM NAV CART BADGE
+     Reads the same localStorage cart the menu page writes to
+     (static/js/app.js's CART_KEY) — read-only here, this page
+     never modifies the cart itself.
+  --------------------------------------------------------- */
+  var CART_STORAGE_KEY = "flavoria_cart_items_v1";
+  var navCartBadge = document.getElementById("navCartBadge");
+  var lastCartCount = null;
+
+  function refreshCartBadge(){
+    if (!navCartBadge) return;
+    var count = 0;
+    try {
+      var items = JSON.parse(localStorage.getItem(CART_STORAGE_KEY)) || [];
+      if (Array.isArray(items)){
+        count = items.reduce(function(sum, it){ return sum + (Number(it.quantity) || 0); }, 0);
+      }
+    } catch (e){ count = 0; }
+
+    navCartBadge.textContent = count > 99 ? "99+" : String(count);
+    navCartBadge.classList.toggle("show", count > 0);
+    if (lastCartCount !== null && count !== lastCartCount && count > 0){
+      navCartBadge.classList.remove("bump");
+      void navCartBadge.offsetWidth;
+      navCartBadge.classList.add("bump");
+    }
+    lastCartCount = count;
+  }
+
+  refreshCartBadge();
+  window.addEventListener("storage", function(e){
+    if (e.key === CART_STORAGE_KEY) refreshCartBadge();
+  });
+  document.addEventListener("visibilitychange", function(){
+    if (!document.hidden) refreshCartBadge();
+  });
 
   /* ---------------------------------------------------------
      HELPERS

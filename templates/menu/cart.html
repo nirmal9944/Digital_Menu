@@ -7,13 +7,15 @@
 <title>Your Cart | Flavoria Kitchen &amp; Bar</title>
 <meta name="description" content="Review your Flavoria Kitchen &amp; Bar order, adjust quantities, and place your order for Table {{ table_number }}.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
 /* ============================================================
    DESIGN TOKENS
    ============================================================ */
 :root {
+  --font-display: 'Fraunces', serif;
   --color-bg:           #faf8f5;
   --color-card:         #ffffff;
   --color-text:         #2b2420;
@@ -25,6 +27,8 @@
   --color-green:        #2ea84a;
   --color-green-bg:     #e9f6ec;
   --color-green-dark:   #1f6b34;
+  --color-veg:          #2ea84a;
+  --color-nonveg:       #b3402a;
   --color-delete:       #e0483e;
   --color-delete-bg:    #fdeceb;
   --shadow-sm:  0 2px 10px rgba(43,36,32,0.06);
@@ -37,6 +41,7 @@
   --radius-full: 999px;
   --ease: cubic-bezier(.4,0,.2,1);
   --shell-max: 1400px;
+  --nav-h: 78px;
 }
 
 /* ============================================================
@@ -62,7 +67,7 @@ h1,h2,h3,h4 { margin: 0; }
   min-height: 100vh;
   background: var(--color-bg);
   overflow-x: hidden;
-  padding-bottom: 110px; /* space for sticky bar on mobile */
+  padding-bottom: 200px; /* space for sticky bar + floating nav on mobile */
 }
 
 /* ============================================================
@@ -72,7 +77,9 @@ h1,h2,h3,h4 { margin: 0; }
   position: sticky;
   top: 0;
   z-index: 30;
-  background: var(--color-bg);
+  background: rgba(250,248,245,.9);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   padding: 14px 16px 12px;
   border-bottom: 1px solid var(--color-border);
   box-shadow: 0 2px 12px rgba(43,36,32,.06);
@@ -111,7 +118,7 @@ h1,h2,h3,h4 { margin: 0; }
 .back-btn:active { transform: scale(.93); }
 
 .title-block { flex: 1; text-align: center; min-width: 0; }
-.title-block h1 { font-size: 1.3rem; font-weight: 700; margin-bottom: 2px; }
+.title-block h1 { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; margin-bottom: 2px; }
 .title-divider {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   margin-bottom: 2px;
@@ -221,11 +228,41 @@ h1,h2,h3,h4 { margin: 0; }
   display: flex; align-items: center; justify-content: center;
   color: var(--color-orange);
   font-size: 1.6rem;
+  overflow: hidden;
 }
+.item-image img { width: 100%; height: 100%; object-fit: cover; }
 .item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .item-body-top { display: flex; justify-content: space-between; gap: 8px; }
 .item-title-desc { flex: 1; min-width: 0; }
 .item-title { font-size: .94rem; font-weight: 700; margin-bottom: 2px; }
+
+.item-badges { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.veg-indicator {
+  flex-shrink: 0;
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  border: 1.5px solid var(--color-nonveg);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.veg-indicator .veg-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-nonveg); }
+.veg-indicator.veg { border-color: var(--color-veg); }
+.veg-indicator.veg .veg-dot { background: var(--color-veg); }
+.category-badge {
+  font-size: .64rem; font-weight: 600;
+  color: var(--color-muted);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  padding: 2px 8px; border-radius: var(--radius-full);
+}
+.item-desc {
+  font-size: .78rem; color: var(--color-muted); line-height: 1.4;
+  margin: 0 0 4px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.item-prep {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: .72rem; color: var(--color-muted);
+}
 .item-price-delete {
   flex-shrink: 0;
   display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
@@ -285,20 +322,51 @@ h1,h2,h3,h4 { margin: 0; }
   display: none;
   flex-direction: column; align-items: center;
   text-align: center; gap: 8px;
-  padding: 60px 30px;
+  padding: 40px 24px 24px;
   color: var(--color-muted);
 }
 .empty-cart.show { display: flex; }
-.empty-cart i { font-size: 2.6rem; color: var(--color-orange-pale); margin-bottom: 8px; }
-.empty-cart h3 { color: var(--color-text); font-size: 1.05rem; }
-.empty-cart p  { font-size: .85rem; margin: 0 0 10px; }
+
+.empty-illustration {
+  position: relative;
+  width: clamp(180px, 150px + 12vw, 240px);
+  height: clamp(170px, 140px + 10vw, 220px);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 4px;
+}
+.empty-illustration .blob {
+  position: absolute; inset: 6%;
+  background: radial-gradient(circle at 35% 30%, var(--color-orange-pale), #fdf6f0 70%);
+  border-radius: 46% 54% 58% 42% / 50% 44% 56% 50%;
+  z-index: 0;
+}
+.empty-illustration .bag-icon {
+  position: relative; z-index: 1;
+  font-size: clamp(64px, 50px + 5vw, 92px);
+  color: var(--color-orange);
+  filter: drop-shadow(0 8px 14px rgba(239,111,31,.18));
+}
+.empty-illustration .deco { position: absolute; z-index: 1; color: var(--color-orange); opacity: .55; }
+.deco-star-1 { top: 12%; left: 16%; font-size: 12px; animation: twinkleCart 2.4s ease-in-out infinite; }
+.deco-star-2 { top: 8%; right: 18%; font-size: 9px; animation: twinkleCart 2.4s ease-in-out infinite .6s; }
+.deco-leaf-1 { bottom: 16%; left: 12%; font-size: 14px; color: var(--color-green); transform: rotate(-18deg); opacity: .7; }
+.deco-leaf-2 { bottom: 10%; right: 14%; font-size: 13px; color: var(--color-green); transform: rotate(20deg); opacity: .6; }
+@keyframes twinkleCart { 0%,100%{ opacity:.3; transform:scale(.85); } 50%{ opacity:.9; transform:scale(1.15); } }
+
+.empty-cart h3 { color: var(--color-text); font-family: var(--font-display); font-size: 1.15rem; margin-top: 4px; }
+.empty-cart p  { font-size: .85rem; line-height: 1.55; margin: 6px 0 18px; max-width: 300px; }
 .empty-cart button {
   border: none;
+  display: inline-flex; align-items: center; gap: 8px;
   background: linear-gradient(135deg,var(--color-orange-light),var(--color-orange));
   color: #fff; font-weight: 600; font-size: .85rem;
-  padding: 11px 24px; border-radius: var(--radius-full);
+  padding: 13px 26px; border-radius: var(--radius-full);
   box-shadow: var(--shadow-btn);
+  min-height: 44px;
+  transition: transform .2s var(--ease), box-shadow .2s var(--ease);
 }
+.empty-cart button:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(239,111,31,.38); }
+.empty-cart button:active { transform: scale(.96); }
 
 /* ============================================================
    ORDER SUMMARY CARD
@@ -313,7 +381,7 @@ h1,h2,h3,h4 { margin: 0; }
   transition: opacity .5s var(--ease), transform .5s var(--ease);
 }
 .summary-card.is-visible { opacity: 1; transform: translateY(0); }
-.summary-card h2 { font-size: 1rem; font-weight: 700; margin-bottom: 14px; }
+.summary-card h2 { font-family: var(--font-display); font-size: 1rem; font-weight: 700; margin-bottom: 14px; }
 
 .summary-row {
   display: flex; align-items: center; gap: 12px;
@@ -342,6 +410,13 @@ h1,h2,h3,h4 { margin: 0; }
   padding: 12px 14px; margin-top: 10px;
 }
 .total-box .summary-icon.orange.filled { background: #fff; }
+
+.summary-note {
+  display: flex; align-items: flex-start; gap: 6px;
+  font-size: .7rem; color: var(--color-muted); line-height: 1.5;
+  margin-top: 10px;
+}
+.summary-note i { color: var(--color-orange); font-size: .72rem; margin-top: 2px; flex-shrink: 0; }
 
 .summary-buttons {
   display: flex; gap: 10px; margin-top: 18px;
@@ -381,15 +456,67 @@ h1,h2,h3,h4 { margin: 0; }
    ============================================================ */
 .sticky-bar {
   position: fixed;
-  bottom: 0; left: 0; right: 0;
+  bottom: calc(var(--nav-h) + 24px + env(safe-area-inset-bottom, 0px));
+  left: 12px; right: 12px;
   background: #fff;
   display: flex; align-items: center; gap: 10px;
-  padding: 12px 16px max(12px, env(safe-area-inset-bottom));
-  box-shadow: 0 -8px 22px rgba(43,36,32,.1);
+  padding: 12px 16px;
+  box-shadow: 0 12px 32px rgba(43,36,32,.16);
   z-index: 20;
-  border-radius: 22px 22px 0 0;
+  border-radius: var(--radius-lg);
 }
 .sticky-bar.hide { display: none; }
+
+/* ============================================================
+   FLOATING BOTTOM NAV (mobile/tablet only)
+   ============================================================ */
+.bottom-nav {
+  position: fixed;
+  left: 0; right: 0; margin-inline: auto;
+  width: 92%; max-width: 460px;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: stretch; justify-content: space-around;
+  gap: 2px;
+  background: rgba(255,255,255,.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,.6);
+  border-radius: 28px;
+  box-shadow: 0 15px 45px rgba(0,0,0,.12);
+  z-index: 25;
+  padding: 6px;
+}
+.bottom-nav .nav-item {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-height: 56px;
+  border-radius: 18px;
+  font-size: .68rem; font-weight: 500;
+  color: var(--color-muted);
+  position: relative;
+  transition: color .2s ease, background .25s var(--ease), transform .15s ease;
+}
+.bottom-nav .nav-item i { font-size: 1.05rem; }
+.bottom-nav .nav-item:hover { color: var(--color-orange); }
+.bottom-nav .nav-item:active { transform: scale(.93); }
+.bottom-nav .nav-item.active {
+  color: var(--color-orange);
+  font-weight: 700;
+  background: var(--color-orange-pale);
+  box-shadow: 0 6px 16px rgba(239,111,31,.22);
+}
+.bottom-nav .nav-cart-wrap { position: relative; display: inline-flex; }
+.bottom-nav .cart-badge {
+  position: absolute; top: -6px; right: -9px;
+  min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: var(--radius-full);
+  background: var(--color-orange); color: #fff;
+  font-size: 9.5px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 6px rgba(239,111,31,.5);
+}
+.bottom-nav .cart-badge.bump { animation: navBadgeBounceCart .4s ease; }
+@keyframes navBadgeBounceCart { 0%,100%{ transform: scale(1); } 40%{ transform: scale(1.35); } }
 .sticky-left, .sticky-mid { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .sticky-icon {
   flex-shrink: 0;
@@ -464,7 +591,7 @@ h1,h2,h3,h4 { margin: 0; }
   transition: background .25s var(--ease), color .25s var(--ease);
 }
 .modal-success-icon.is-pending { background: var(--color-orange-pale); color: var(--color-orange); }
-.modal-sheet h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 6px; text-align: center; }
+.modal-sheet h3 { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; margin-bottom: 6px; text-align: center; }
 .modal-sheet p.modal-sub { font-size: .83rem; color: var(--color-muted); text-align: center; margin: 0 0 16px; }
 
 .modal-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
@@ -621,6 +748,7 @@ h1,h2,h3,h4 { margin: 0; }
   }
 
   .sticky-bar { display: none !important; }
+  .bottom-nav { display: none !important; }
 
   .cart-list { gap: 16px; }
 
@@ -641,7 +769,7 @@ h1,h2,h3,h4 { margin: 0; }
    RESPONSIVE — DESKTOP (≥ 1200px)
    ============================================================ */
 @media (min-width: 1200px) {
-  .app-shell { max-width: 1200px; }
+  .app-shell { max-width: var(--shell-max); }
 
   .page-content { padding: 0 36px; }
 
@@ -719,10 +847,19 @@ h1,h2,h3,h4 { margin: 0; }
     <main>
       <!-- Empty state -->
       <div class="empty-cart" id="emptyCart">
-        <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
+        <div class="empty-illustration" aria-hidden="true">
+          <div class="blob"></div>
+          <i class="fa-solid fa-bag-shopping bag-icon"></i>
+          <i class="fa-solid fa-star deco deco-star-1"></i>
+          <i class="fa-solid fa-star deco deco-star-2"></i>
+          <i class="fa-solid fa-leaf deco deco-leaf-1"></i>
+          <i class="fa-solid fa-leaf deco deco-leaf-2"></i>
+        </div>
         <h3>Your cart is empty</h3>
-        <p>Browse the menu to add delicious dishes.</p>
-        <button type="button" id="emptyBrowseBtn">Browse Menu</button>
+        <p>Looks like you haven't added anything yet. Browse our menu and find something delicious.</p>
+        <button type="button" id="emptyBrowseBtn">
+          <i class="fa-solid fa-utensils" aria-hidden="true"></i> Browse Menu
+        </button>
       </div>
 
       <!-- Cart grid: items left, summary right on desktop -->
@@ -756,6 +893,11 @@ h1,h2,h3,h4 { margin: 0; }
             <span class="summary-label bold">Total Amount</span>
             <span class="summary-value total" id="totalValue">Rs. 0</span>
           </div>
+
+          <p class="summary-note">
+            <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+            VAT and any applicable discount are calculated on your final bill when you request it after ordering.
+          </p>
 
           <div class="summary-buttons">
             <button type="button" class="btn-outline ripple" data-ripple="dark" id="backToMenuBtn">
@@ -792,6 +934,25 @@ h1,h2,h3,h4 { margin: 0; }
       View Details <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
     </button>
   </div>
+
+  <!-- ==================== FLOATING BOTTOM NAV (mobile/tablet) ==================== -->
+  <nav class="bottom-nav" aria-label="Primary">
+    <a class="nav-item" href="{% url 'menu' table_number=table_number %}">
+      <i class="fa-solid fa-utensils" aria-hidden="true"></i>
+      <span>Menu</span>
+    </a>
+    <a class="nav-item" href="{% url 'order_tracking' table_number=table_number %}">
+      <i class="fa-solid fa-clipboard-list" aria-hidden="true"></i>
+      <span>Orders</span>
+    </a>
+    <a class="nav-item active" href="{% url 'cart' table_number=table_number %}" aria-current="page">
+      <span class="nav-cart-wrap">
+        <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
+        <span class="cart-badge">0</span>
+      </span>
+      <span>Cart</span>
+    </a>
+  </nav>
 
   <!-- ==================== VIEW DETAILS MODAL ==================== -->
   <div class="modal-overlay" id="detailsModalOverlay"

@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -85,6 +86,39 @@ class FoodItem(models.Model):
     is_available = models.BooleanField(default=True)
 
     is_popular = models.BooleanField(default=False)
+
+    is_vegetarian = models.BooleanField(
+        default=False,
+        help_text=(
+            'Shown as the veg/non-veg indicator on the menu. Defaults to False '
+            'for existing dishes — review and set correctly per dish before relying on it.'
+        ),
+    )
+
+    is_chef_choice = models.BooleanField(default=False)
+
+    is_new = models.BooleanField(default=False)
+
+    rating = models.DecimalField(
+        max_digits=2,
+        decimal_places=1,
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(Decimal('0')), MaxValueValidator(Decimal('5'))],
+        help_text='0.0–5.0. Leave blank to hide the rating badge.',
+    )
+
+    calories = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        help_text='Leave blank to hide the calorie badge.',
+    )
+
+    ingredients = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text='Comma-separated list, shown in the item detail modal. Leave blank to hide.',
+    )
 
     preparation_time = models.PositiveIntegerField(
         default=15,
