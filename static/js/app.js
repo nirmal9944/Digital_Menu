@@ -680,12 +680,6 @@
             }, 2600);
         }
 
-        /* ---- filter button (placeholder) ---- */
-        var filterBtn = document.getElementById('filterBtn');
-        if (filterBtn) {
-            filterBtn.addEventListener('click', function() { showToast('Filters coming soon'); });
-        }
-
         /* ---- initial paint of quantity steppers + floating cart pill ---- */
         syncCartUI();
     }

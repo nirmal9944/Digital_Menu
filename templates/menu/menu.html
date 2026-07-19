@@ -65,7 +65,7 @@
   --radius-lg: 22px;
   --radius-md: 16px;
   --radius-sm: 10px;
-  --radius-full: 999px;
+  --radius-full: 400px;
 
   /* Motion */
   --ease: cubic-bezier(.4,0,.2,1);
@@ -528,24 +528,6 @@ ul{ margin:0; padding:0; list-style:none; }
   0%,100%{ transform:scale(1); opacity:1; }
   50%{ transform:scale(1.18); opacity:.65; }
 }
-.filter-btn{
-  flex-shrink:0;
-  width:46px;
-  height:46px;
-  border-radius:15px;
-  border:none;
-  background:linear-gradient(135deg,var(--color-orange-light),var(--color-orange));
-  color:#fff;
-  font-size:1rem;
-  cursor:pointer;
-  box-shadow:var(--shadow-btn);
-  position:relative;
-  overflow:hidden;
-  transition:transform .2s var(--ease);
-}
-.filter-btn:hover{ transform:translateY(-1px) scale(1.04); }
-.filter-btn:active{ transform:scale(.95); }
-
 /* =========================================================
    CATEGORY SELECTOR - Line 3
    ========================================================= */
@@ -1083,10 +1065,11 @@ ul{ margin:0; padding:0; list-style:none; }
   left:0;
   right:0;
   margin-inline:auto;
-  width:fit-content;
+  width:92%;
+  max-width:460px;
   bottom:max(12px, env(safe-area-inset-bottom));
   display:flex;
-  justify-content:center;
+  justify-content:space-around;
   align-items:center;
   gap:2px;
   background:rgba(255,255,255,.88);
@@ -1100,6 +1083,7 @@ ul{ margin:0; padding:0; list-style:none; }
 }
 .nav-item{
   position:relative;
+  flex:1;
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -1289,7 +1273,6 @@ ul{ margin:0; padding:0; list-style:none; }
   .search-box{ padding:8px 12px; }
   .search-box input{ font-size:.72rem; }
   .voice-btn{ display:none; }
-  .filter-btn{ width:36px; height:36px; font-size:.8rem; }
   .category-thumb{ width:38px; height:38px; border-radius:11px; font-size:.9rem; }
   .category-item span{ display:none; }
   .category-row{ gap:6px; }
@@ -1514,9 +1497,6 @@ ul{ margin:0; padding:0; list-style:none; }
               <i class="fa-solid fa-microphone" aria-hidden="true"></i>
             </button>
           </div>
-          <button type="button" class="filter-btn ripple" id="filterBtn" data-ripple="light" aria-label="Open filters">
-            <i class="fa-solid fa-sliders" aria-hidden="true"></i>
-          </button>
         </div>
 
         <nav class="category-row" id="categoryRow" aria-label="Menu categories">
