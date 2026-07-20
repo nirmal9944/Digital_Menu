@@ -22,6 +22,7 @@ from .models import (
     QuickRequest,
     Feedback,
 )
+from .utils import translate_to_english
 
 # How long the "rate your visit" prompt stays up on order_tracking.html
 # after a bill is marked paid, before the page lazily reverts to the empty
@@ -520,10 +521,16 @@ def place_order(request, table_number):
     # placing the order.
     _grant_table_access(request, table_number, session)
 
+    # Special instructions can arrive in any language the customer typed
+    # them in — translate to English here, before anything is saved, so
+    # the kitchen only ever has to read one language regardless of what
+    # the customer wrote. translate_to_english() degrades gracefully
+    # (returns the original text) on any failure, so a flaky translation
+    # backend can never block order placement.
     order = Order.objects.create(
         session=session,
         status='new',
-        customer_note=(payload.get('note') or '')[:255],
+        customer_note=translate_to_english((payload.get('note') or '')[:255]),
     )
 
     created_any = False
@@ -543,7 +550,7 @@ def place_order(request, table_number):
             food=food,
             quantity=quantity,
             unit_price=food.effective_price,
-            special_instruction=(entry.get('note') or '')[:255],
+            special_instruction=translate_to_english((entry.get('note') or '')[:255]),
         )
         created_any = True
 
