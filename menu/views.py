@@ -761,30 +761,36 @@ def submit_feedback(request, table_number):
     """
     Customer submits their post-payment feedback.
 
-    The Bill is resolved server-side from table_number via the exact same
-    _find_relevant_session() the polling endpoint used to decide this table
-    should be shown the feedback prompt in the first place — never trusts a
-    client-supplied bill id, so there's no way to submit feedback against
-    the wrong table's bill.
+    Deliberately NOT gated by _check_table_access, and deliberately NOT
+    using _find_relevant_session to resolve the bill. Both of those are
+    built around "what's currently relevant for this table" — correct for
+    the tracking page, wrong here. Feedback is about a visit that's
+    already over: the table can (and by design does) become available and
+    get a brand-new PIN-protected session the instant payment clears, and
+    if a new party starts ordering within the same 60s window the old
+    customer is filling out their survey, both of those would silently
+    resolve to the NEW session instead — blocking a legitimate feedback
+    submission (wrong PIN gate) or attaching it to the wrong bill
+    (unpaid). Resolving directly to "the most recently paid bill for this
+    table" sidesteps both: it's stable regardless of what happens at the
+    table afterwards, and the Bill is never trusted from the client, so
+    there's still no way to submit feedback against another table's bill.
 
     Duplicate submits are a no-op success (get_or_create), not an error, so
-    a double-tap on Submit — or the 60s window and a real submit racing
-    each other — can't fail confusingly.
+    a double-tap on Submit can't fail confusingly.
     """
-    if _check_table_access(request, table_number):
-        return JsonResponse(
-            {'success': False, 'error': 'This table is booked. Please join with the table PIN.'},
-            status=403,
-        )
-
     table = RestaurantTable.objects.filter(table_number=table_number).first()
     if not table:
         return JsonResponse({'success': False, 'error': 'Table not found.'}, status=404)
 
-    session = _find_relevant_session(table)
-    bill = Bill.objects.filter(session=session).first() if session else None
+    bill = (
+        Bill.objects
+        .filter(session__table=table, payment_status='paid')
+        .order_by('-paid_at')
+        .first()
+    )
 
-    if not bill or bill.payment_status != 'paid':
+    if not bill:
         return JsonResponse(
             {'success': False, 'error': 'No paid bill is currently awaiting feedback for this table.'},
             status=400,

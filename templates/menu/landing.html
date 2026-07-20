@@ -438,51 +438,6 @@ body{
   ════════════════════════════════════════ -->
   <main class="content-panel" aria-label="Table info and language selection">
 
-    {% if gated %}
-    <!-- Table Card (booked) -->
-    <div class="table-card" data-anim aria-label="Your table assignment">
-      <div class="table-icon-wrap" aria-hidden="true">
-        <i class="fa-solid fa-lock"></i>
-      </div>
-      <div class="table-meta">
-        <p class="lbl">Your table</p>
-        <p class="num">Table {{ table_number }}</p>
-      </div>
-      <span class="table-badge" aria-label="Table {{ table_number }} is booked" style="background:var(--muted);">
-        Booked
-      </span>
-    </div>
-
-    <!-- Booked message -->
-    <div class="lang-card" data-anim>
-      <div class="lang-card-header">
-        <span class="lang-icon-badge" aria-hidden="true">
-          <i class="fa-solid fa-users"></i>
-        </span>
-        <div>
-          <h2>Table {{ table_number }} is currently booked</h2>
-          <p>If you're sitting at this table with the existing group, please join the current table session.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Join Table Button -->
-    <div class="menu-btn-wrap" data-anim>
-      <a
-        href="{% url 'join_table' table_number=table_number %}"
-        class="menu-btn"
-        aria-label="Join table {{ table_number }}"
-        role="button"
-      >
-        <span class="mb-left">
-          <i class="fa-solid fa-right-to-bracket mb-icon" aria-hidden="true"></i>
-          <span>Join Table</span>
-        </span>
-        <i class="fa-solid fa-chevron-right mb-arr" aria-hidden="true"></i>
-      </a>
-    </div>
-    {% else %}
-
     <!-- Table Card -->
     <div class="table-card" data-anim aria-label="Your table assignment">
       <div class="table-icon-wrap" aria-hidden="true">
@@ -589,7 +544,6 @@ body{
         <i class="fa-solid fa-chevron-right mb-arr" aria-hidden="true"></i>
       </a>
     </div>
-    {% endif %}
 
     <footer class="footer" data-anim>
       <div class="divider-line" aria-hidden="true">
