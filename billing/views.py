@@ -277,10 +277,15 @@ def set_bill_status(request, bill_id):
             bill.save()
 
             # Closing out the bill frees the table for the next guests.
+            # Clearing the PIN here is belt-and-braces — _check_table_access
+            # only ever looks at status='active' sessions anyway, so the PIN
+            # is already functionally dead the moment status flips, but this
+            # matches "invalidate the PIN" literally rather than by side effect.
             session = bill.session
             session.status = 'closed'
             session.ended_at = timezone.now()
-            session.save(update_fields=['status', 'ended_at'])
+            session.pin = ''
+            session.save(update_fields=['status', 'ended_at', 'pin'])
 
             table = session.table
             if table.status != 'available':

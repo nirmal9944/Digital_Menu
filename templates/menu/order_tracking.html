@@ -345,6 +345,14 @@
      9. STATE — ACTIVE / COMPLETED shared bits
   ========================================================= */
   .order-info-card{ display:flex; align-items:center; gap:13px; }
+  .pin-chip{
+    margin-left:auto; flex-shrink:0; text-align:right;
+    background:var(--color-primary-light);
+    border-radius:var(--radius-md);
+    padding:8px 14px;
+  }
+  .pin-chip-label{ display:block; font-size:.62rem; font-weight:700; color:var(--color-primary-dark); text-transform:uppercase; letter-spacing:.5px; }
+  .pin-chip-value{ display:block; font-family:var(--font-display); font-size:1.15rem; font-weight:700; color:var(--color-primary-dark); letter-spacing:3px; }
   .order-info-icon{ width:46px; height:46px; border-radius:13px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
   .order-info-icon.tone-orange{ background:var(--color-primary-light); color:var(--color-primary); }
   .order-info-icon.tone-green{ background:var(--color-green-light); color:var(--color-green); }
@@ -729,6 +737,10 @@
                 <p class="order-id" id="activeOrderId">Order #</p>
                 <p class="order-meta" id="activeOrderMeta">Placed on &mdash;</p>
               </div>
+              <div class="pin-chip js-pin-chip" title="Share this PIN only with people sitting at your table" hidden>
+                <span class="pin-chip-label">Table PIN</span>
+                <span class="pin-chip-value js-pin-value">----</span>
+              </div>
             </div>
 
             <div class="card stepper-card anim-in d1">
@@ -785,6 +797,10 @@
               <div class="order-info-text">
                 <p class="order-id" id="doneOrderId">Order #</p>
                 <p class="order-meta" id="doneOrderMeta">Placed on &mdash;</p>
+              </div>
+              <div class="pin-chip js-pin-chip" title="Share this PIN only with people sitting at your table" hidden>
+                <span class="pin-chip-label">Table PIN</span>
+                <span class="pin-chip-value js-pin-value">----</span>
               </div>
             </div>
 
@@ -1402,6 +1418,8 @@ const langManager = new LanguageManager();
       document.querySelectorAll(".js-tax").forEach(function(el){ el.textContent = money(data.tax); });
       document.querySelectorAll(".js-total").forEach(function(el){ el.textContent = money(data.grand_total); });
       document.querySelectorAll(".js-bill-status").forEach(function(el){ el.innerHTML = buildBillStatusHTML(data); });
+      document.querySelectorAll(".js-pin-chip").forEach(function(el){ el.hidden = !data.pin; });
+      document.querySelectorAll(".js-pin-value").forEach(function(el){ el.textContent = data.pin || "----"; });
     }
 
     if (prevState && prevState !== data.state && data.state !== "completed"){

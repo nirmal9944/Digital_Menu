@@ -345,6 +345,12 @@ class TableSession(models.Model):
         default='active'
     )
 
+    # Generated after this session's first order (see menu.views.place_order
+    # / quick_order) so a second device opening this table's URL has to
+    # prove membership before it can browse or order. Blank until then;
+    # cleared when the session closes (billing.views.set_bill_status).
+    pin = models.CharField(max_length=4, blank=True)
+
     def __str__(self):
         return f"Table {self.table.table_number}"
 

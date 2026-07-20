@@ -5,6 +5,9 @@ urlpatterns = [
     path('<int:table_number>/', views.landing, name='landing'),
     path('<int:table_number>/menu/', views.menu_page, name='menu'),
 
+    # PIN entry for a device joining a table someone else already started
+    path('<int:table_number>/join/', views.join_table, name='join_table'),
+
     # Order tracking page (what the customer sees on their phone)
     path(
         '<int:table_number>/order-tracking/',

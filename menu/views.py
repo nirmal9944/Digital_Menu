@@ -1,7 +1,9 @@
 import json
+import random
+import time
 
 from django.db.models import Max, Min
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.utils import timezone
@@ -26,20 +28,106 @@ from .models import (
 # state on its own (see the end of _build_tracking_data below).
 FEEDBACK_WINDOW_SECONDS = 60
 
+# PIN entry rate-limiting — proportionate to what this actually needs to
+# resist (a curious neighboring table guessing digits), not a determined
+# attacker. Session-tracked, no new model needed.
+PIN_MAX_ATTEMPTS = 5
+PIN_LOCKOUT_SECONDS = 60
+
+
+# ---------------------------------------------------------------------------
+# TABLE ACCESS GATE
+# ---------------------------------------------------------------------------
+
+def _check_table_access(request, table_number):
+    """
+    Returns None if this device may proceed straight to the table's
+    menu/ordering flow, or the active TableSession if it needs to enter a
+    PIN first (gated). A table with no active session, a session with no
+    PIN yet (nobody's ordered there this visit), or a session this device
+    is already verified for (it started the session, or already entered
+    the right PIN) all return None.
+    """
+    table = RestaurantTable.objects.filter(table_number=table_number).first()
+    if not table:
+        return None
+    session = TableSession.objects.filter(table=table, status='active').first()
+    if not session or not session.pin:
+        return None
+    if request.session.get(f'verified_session_{table_number}') == session.id:
+        return None
+    return session
+
+
+def _grant_table_access(request, table_number, session):
+    request.session[f'verified_session_{table_number}'] = session.id
+
 
 def landing(request, table_number):
 
     restaurant = RestaurantDetail.objects.first()
+    gated = _check_table_access(request, table_number)
 
     context = {
         'table_number': table_number,
-        'restaurant': restaurant
+        'restaurant': restaurant,
+        'gated': gated is not None,
     }
 
     return render(request, 'menu/landing.html', context)
 
 
+def join_table(request, table_number):
+    """
+    PIN entry for a device that isn't yet part of this table's active
+    session. GET shows the form; POST verifies the submitted PIN.
+    """
+    session = _check_table_access(request, table_number)
+    if not session:
+        # Nothing to join (table's free, or this device is already in) —
+        # just send it on to the normal flow.
+        return redirect('menu', table_number=table_number)
+
+    attempts_key = f'pin_attempts_{table_number}'
+    lockout_key = f'pin_lockout_until_{table_number}'
+    error = None
+
+    lockout_until = request.session.get(lockout_key)
+    locked_out = bool(lockout_until and time.time() < lockout_until)
+
+    if request.method == 'POST' and not locked_out:
+        entered_pin = (request.POST.get('pin') or '').strip()
+        if entered_pin == session.pin:
+            _grant_table_access(request, table_number, session)
+            request.session.pop(attempts_key, None)
+            request.session.pop(lockout_key, None)
+            return redirect('menu', table_number=table_number)
+
+        attempts = request.session.get(attempts_key, 0) + 1
+        request.session[attempts_key] = attempts
+        if attempts >= PIN_MAX_ATTEMPTS:
+            request.session[lockout_key] = time.time() + PIN_LOCKOUT_SECONDS
+            locked_out = True
+            error = f'Too many incorrect attempts. Try again in {PIN_LOCKOUT_SECONDS} seconds.'
+        else:
+            remaining = PIN_MAX_ATTEMPTS - attempts
+            error = f'Invalid PIN. Please enter the correct table PIN. ({remaining} attempt{"s" if remaining != 1 else ""} left)'
+    elif locked_out:
+        wait_seconds = max(0, int(lockout_until - time.time()))
+        error = f'Too many incorrect attempts. Try again in {wait_seconds} seconds.'
+
+    context = {
+        'table_number': table_number,
+        'restaurant': RestaurantDetail.objects.first(),
+        'error': error,
+        'locked_out': locked_out,
+    }
+    return render(request, 'menu/join_table.html', context)
+
+
 def menu_page(request, table_number):
+    if _check_table_access(request, table_number):
+        return redirect('landing', table_number=table_number)
 
     foods = FoodItem.objects.select_related(
         'category'
@@ -280,6 +368,7 @@ def _build_tracking_data(table_number):
         'bill_requested': bill is not None,
         'bill_id': bill.id if bill else None,
         'payment_status': bill.payment_status if bill else None,
+        'pin': session.pin,
     })
 
     # Once paid, hand the page over to the feedback prompt for a short
@@ -310,6 +399,9 @@ def order_tracking(request, table_number):
     reflects live status changes from the kitchen/admin side without the
     customer ever needing to refresh.
     """
+    if _check_table_access(request, table_number):
+        return redirect('landing', table_number=table_number)
+
     data = _build_tracking_data(table_number)
 
     context = {
@@ -327,6 +419,9 @@ def order_status_api(request, table_number):
     so the front-end render() function can use it identically whether
     it came from the initial page load or a poll.
     """
+    if _check_table_access(request, table_number):
+        return JsonResponse({'error': 'This table is booked. Please join with the table PIN.'}, status=403)
+
     data = _build_tracking_data(table_number)
     return JsonResponse(data)
 
@@ -351,6 +446,9 @@ def cart_page(request, table_number):
     Django's {% url %} tag, since static files bypass the template
     engine entirely).
     """
+    if _check_table_access(request, table_number):
+        return redirect('landing', table_number=table_number)
+
     context = {
         'table_number': table_number,
         'restaurant': RestaurantDetail.objects.first(),
@@ -375,6 +473,12 @@ def place_order(request, table_number):
     Returns JSON: {"success": true, "order_number": "ORD-0007", ...}
     or            {"success": false, "error": "..."}
     """
+    if _check_table_access(request, table_number):
+        return JsonResponse(
+            {'success': False, 'error': 'This table is booked. Please join with the table PIN.'},
+            status=403,
+        )
+
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -404,10 +508,17 @@ def place_order(request, table_number):
     ).order_by('-started_at').first()
 
     if not session:
-        session = TableSession.objects.create(table=table, status='active')
+        session = TableSession.objects.create(
+            table=table, status='active', pin=f'{random.randint(0, 9999):04d}',
+        )
         if table.status != 'occupied':
             table.status = 'occupied'
             table.save(update_fields=['status'])
+
+    # Whoever's request created (or already owns) this session is
+    # inherently a member of it — never gate the device that's actually
+    # placing the order.
+    _grant_table_access(request, table_number, session)
 
     order = Order.objects.create(
         session=session,
@@ -462,6 +573,12 @@ def place_order(request, table_number):
 
 @require_POST
 def cancel_order_item(request, table_number, item_id):
+    if _check_table_access(request, table_number):
+        return JsonResponse(
+            {'success': False, 'error': 'This table is booked. Please join with the table PIN.'},
+            status=403,
+        )
+
     item = get_object_or_404(
         OrderItem.objects.select_related('order__session__table', 'food'),
         id=item_id,
@@ -509,6 +626,12 @@ def cancel_order_item(request, table_number, item_id):
 
 @require_POST
 def request_bill(request, table_number):
+    if _check_table_access(request, table_number):
+        return JsonResponse(
+            {'success': False, 'error': 'This table is booked. Please join with the table PIN.'},
+            status=403,
+        )
+
     table = RestaurantTable.objects.filter(table_number=table_number).first()
     if not table:
         return JsonResponse({'success': False, 'error': 'Table not found.'}, status=404)
@@ -557,6 +680,12 @@ def quick_order(request, table_number):
     if needed, same as place_order). Free items are just a kitchen ping;
     priced ones also get folded into that table's bill total.
     """
+    if _check_table_access(request, table_number):
+        return JsonResponse(
+            {'success': False, 'error': 'This table is booked. Please join with the table PIN.'},
+            status=403,
+        )
+
     try:
         payload = json.loads(request.body.decode('utf-8') or '{}')
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -585,10 +714,14 @@ def quick_order(request, table_number):
     ).order_by('-started_at').first()
 
     if not session:
-        session = TableSession.objects.create(table=table, status='active')
+        session = TableSession.objects.create(
+            table=table, status='active', pin=f'{random.randint(0, 9999):04d}',
+        )
         if table.status != 'occupied':
             table.status = 'occupied'
             table.save(update_fields=['status'])
+
+    _grant_table_access(request, table_number, session)
 
     QuickRequest.objects.create(
         session=session,
@@ -631,6 +764,12 @@ def submit_feedback(request, table_number):
     a double-tap on Submit — or the 60s window and a real submit racing
     each other — can't fail confusingly.
     """
+    if _check_table_access(request, table_number):
+        return JsonResponse(
+            {'success': False, 'error': 'This table is booked. Please join with the table PIN.'},
+            status=403,
+        )
+
     table = RestaurantTable.objects.filter(table_number=table_number).first()
     if not table:
         return JsonResponse({'success': False, 'error': 'Table not found.'}, status=404)
