@@ -128,7 +128,7 @@ def join_table(request, table_number):
 
 def menu_page(request, table_number):
     if _check_table_access(request, table_number):
-        return redirect('landing', table_number=table_number)
+        return redirect('join_table', table_number=table_number)
 
     foods = FoodItem.objects.select_related(
         'category'

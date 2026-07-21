@@ -240,6 +240,11 @@ body{
 .qr-info .t1{font-size:clamp(.82rem,1.6vw,.92rem);font-weight:600;color:var(--green-text);margin-bottom:2px}
 .qr-info .t2{font-size:clamp(.72rem,1.4vw,.8rem);color:#3f7a52}
 .qr-icon-wrap{flex-shrink:0;font-size:clamp(1.2rem,2.5vw,1.5rem);color:var(--green);opacity:.7}
+.qr-card.occupied{background:var(--orange-pale);border-color:rgba(239,111,31,.2)}
+.qr-card.occupied .success-dot{background:var(--orange)}
+.qr-card.occupied .t1{color:var(--orange-deep)}
+.qr-card.occupied .t2{color:var(--muted)}
+.qr-card.occupied .qr-icon-wrap{color:var(--orange)}
 
 /* LANGUAGE CARD */
 .lang-card{
@@ -452,6 +457,21 @@ body{
       </span>
     </div>
 
+    {% if gated %}
+    <!-- Table occupied -->
+    <div class="qr-card occupied" data-anim role="status" aria-live="polite">
+      <div class="success-dot" aria-hidden="true">
+        <i class="fa-solid fa-lock"></i>
+      </div>
+      <div class="qr-info">
+        <p class="t1">This table already has a dining session</p>
+        <p class="t2">Ask anyone at the table for the PIN to join.</p>
+      </div>
+      <div class="qr-icon-wrap" aria-hidden="true">
+        <i class="fa-solid fa-key"></i>
+      </div>
+    </div>
+    {% else %}
     <!-- QR Success -->
     <div class="qr-card" data-anim role="status" aria-live="polite">
       <div class="success-dot" aria-hidden="true">
@@ -465,6 +485,7 @@ body{
         <i class="fa-solid fa-qrcode"></i>
       </div>
     </div>
+    {% endif %}
 
     <!-- Language Card -->
     <div class="lang-card" data-anim>
@@ -528,8 +549,23 @@ body{
       </div>
     </div>
 
-    <!-- View Menu Button -->
+    <!-- View Menu / Join Table Button -->
     <div class="menu-btn-wrap" data-anim>
+      {% if gated %}
+      <a
+        href="{% url 'join_table' table_number %}"
+        class="menu-btn"
+        id="menuBtn"
+        aria-label="Enter PIN to join Table {{ table_number }}"
+        role="button"
+      >
+        <span class="mb-left">
+          <i class="fa-solid fa-key mb-icon" aria-hidden="true"></i>
+          <span id="btnLabel">Enter Table PIN</span>
+        </span>
+        <i class="fa-solid fa-chevron-right mb-arr" aria-hidden="true"></i>
+      </a>
+      {% else %}
       <a
         href="{% url 'menu' table_number %}"
         class="menu-btn"
@@ -543,6 +579,7 @@ body{
         </span>
         <i class="fa-solid fa-chevron-right mb-arr" aria-hidden="true"></i>
       </a>
+      {% endif %}
     </div>
 
     <footer class="footer" data-anim>
